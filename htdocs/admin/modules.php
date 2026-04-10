@@ -423,6 +423,10 @@ if ($action == 'set' && $user->admin) {
 	}
 
 	dolibarr_set_const($db, "MAIN_IHM_PARAMS_REV", getDolGlobalInt('MAIN_IHM_PARAMS_REV') + 1, 'chaine', 0, '', $conf->entity);
+	/* mod_evandsys */
+	// log activation module par entité
+	$hookmanager->executeHooks('afterModuleStatusChange', array('module' => $value, 'status' => 'enable', 'entity' => $conf->entity), $object, $action);
+	/* fin_mod_evandsys */
 	if (!empty($resarray['errors'])) {
 		setEventMessages('', $resarray['errors'], 'errors');
 	} else {
