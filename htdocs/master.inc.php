@@ -294,6 +294,13 @@ if (session_id() && !empty($_SESSION["dol_entity"])) {
 if (!is_numeric($conf->entity)) {
 	$conf->entity = 1;
 }
+/* mod_evandsys */
+// Force l'entité Dolibarr selon le sous-domaine HTTP courant
+if ($db !== null && function_exists('isModEnabled') && isModEnabled('entitydomain')) {
+	require_once DOL_DOCUMENT_ROOT.'/custom/entitydomain/core/entitydomain_boot.php';
+}
+/* fin_mod_evandsys */
+
 // Here we read database (llx_const table) and define conf var $conf->global->XXX.
 //print "We work with data into entity instance number '".$conf->entity."'";
 if ($db !== null) {
