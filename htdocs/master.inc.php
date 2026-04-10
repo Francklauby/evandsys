@@ -294,10 +294,14 @@ if (session_id() && !empty($_SESSION["dol_entity"])) {
 if (!is_numeric($conf->entity)) {
 	$conf->entity = 1;
 }
-/* mod_evandsys */
-// Force l'entité Dolibarr selon le sous-domaine HTTP courant
-if ($db !== null && function_exists('isModEnabled') && isModEnabled('entitydomain')) {
-	require_once DOL_DOCUMENT_ROOT.'/custom/entitydomain/core/entitydomain_boot.php';
+/* mod_evandsys - Force l'entité Dolibarr selon le sous-domaine HTTP courant */
+// isModEnabled() n'est pas utilisable ici (setValues pas encore appelé) → requête SQL directe
+if ($db !== null) {
+	$_edCheck = $db->query("SELECT value FROM ".MAIN_DB_PREFIX."const WHERE name='MAIN_MODULE_ENTITYDOMAIN' AND value='1' AND entity IN (0,1) LIMIT 1");
+	if ($_edCheck && $db->num_rows($_edCheck) > 0) {
+		require_once DOL_DOCUMENT_ROOT.'/custom/entitydomain/core/entitydomain_boot.php';
+	}
+	unset($_edCheck);
 }
 /* fin_mod_evandsys */
 
