@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -l \"module_parts.*hooks\" /c/Users/f.lauby/PhpstormProjects/evandsys/htdocs/core/modules/mod*.class.php)",
+      "Bash(grep -r \"'hooks'\" /c/Users/f.lauby/PhpstormProjects/evandsys/htdocs/core/modules/mod*.class.php)",
+      "Bash(xargs -I {} find {} -name \"triggers\")",
+      "Bash(find /c/Users/f.lauby/PhpstormProjects/evandsys -type f \\\\\\( -name \"*.php\" -o -name \"*.xml\" \\\\\\) -exec grep -l \"XmlInvoice\\\\|UBL\\\\|facturx\\\\|FactureX\\\\|electronic.*invoice\" {} \\\\;)",
+      "Bash(php -l core/modules/modFactureX.class.php)",
+      "Bash(php -l core/triggers/interface_99_modFactureX_FactureXTriggers.class.php)",
+      "Bash(php -l class/FactureXGenerator.class.php)",
+      "Bash(php -l core/hooks/actions_facturex.class.php)",
+      "Bash(php -l lib/facturex.lib.php)",
+      "Bash(where php:*)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/xampp/php/**)",
+      "Read(//c/laragon/bin/**)",
+      "Bash(grep -n '$conf->entity\\\\s*=' /c/Users/f.lauby/PhpstormProjects/evandsys/htdocs/main.inc.php)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -v '^[0-9]*:.*//\\\\|^[0-9]*:.*$_SESSION')",
+      "Bash(find:*)",
+      "Bash(grep -v \"//\")",
+      "Bash(grep -l \"llx_\" /c/Users/f.lauby/PhpstormProjects/evandsys/htdocs/install/mysql/tables/*.sql)",
+      "Bash(grep -E \"^/c/Users/f.lauby/PhpstormProjects/evandsys/htdocs/index.php$\")",
+      "Bash(grep:*)",
+      "WebSearch"
+    ]
+  }
+}
