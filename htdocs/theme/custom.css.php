@@ -56,3 +56,13 @@ if (empty($dolibarr_nocache)) {
 
 print '/* Here, the content of the common custom CSS defined into Home - Setup - Display - CSS'."*/\n";
 print getDolGlobalString('MAIN_IHM_CUSTOM_CSS');
+
+/* mod_evandsys : CSS overrides mobile injecté quand le thème md est actif pour l'entité courante */
+/* Désactivable via ENTITYDOMAIN_MOBILE_CSS_DISABLED = 1 dans llx_const (par entité) */
+if (getDolGlobalString('MAIN_THEME') === 'md'
+    && !getDolGlobalInt('ENTITYDOMAIN_MOBILE_CSS_DISABLED')
+    && file_exists(DOL_DOCUMENT_ROOT.'/custom/entitydomain/css/mobile.css')) {
+    print "\n/* entitydomain mobile overrides */\n";
+    readfile(DOL_DOCUMENT_ROOT.'/custom/entitydomain/css/mobile.css');
+}
+/* fin_mod_evandsys */
