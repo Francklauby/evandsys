@@ -268,13 +268,15 @@ if (!getDolGlobalString('ADD_UNSPLASH_LOGIN_BACKGROUND')) {
 <!-- Title with version -->
 <div class="login_table_title center" tabindex="-1" title="<?php echo dolPrintHTMLForAttribute($title); ?>">
 <?php
+/* mod_evandsys - remplacement lien Dolibarr.org et texte version par branding Evandsys */
 if ($disablenofollow) {
-	echo '<a class="login_table_title" tabindex="-1" href="https://www.dolibarr.org" target="_blank" rel="noopener noreferrer external">';
+	echo '<a class="login_table_title" tabindex="-1" href="https://evandsys.fr" target="_blank" rel="noopener noreferrer external">';
 }
-echo dolPrintHTML($title);
+echo 'Evandsys';
 if ($disablenofollow) {
 	echo '</a>';
 }
+/* fin_mod_evandsys */
 ?>
 </div>
 
