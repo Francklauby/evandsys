@@ -1119,7 +1119,8 @@ if (!defined('NOLOGIN')) {
 				header('Location: '.DOL_URL_ROOT.'/user/passwordforgotten.php'
 					.'?setnewpassword=1'
 					.'&username='.urlencode($user->login)
-					.'&passworduidhash='.urlencode($_edHash));
+					.'&passworduidhash='.urlencode($_edHash)
+					.'&entity='.(int) $conf->entity);
 				exit;
 			}
 			unset($_edObjPt);
