@@ -1105,6 +1105,29 @@ if (!defined('NOLOGIN')) {
 		}
 	}
 
+	/* mod_evandsys — forçage changement de mot de passe si pass_temp défini (provisioning client)
+	 * Convergence des deux flux (nouveau login + session existante). Ne s'exécute pas sur les pages
+	 * NOLOGIN (passwordforgotten.php, API…) car tout ce bloc est dans if (!defined('NOLOGIN')).
+	 */
+	if (!empty($user->id)) {
+		$_edSqlPt = "SELECT pass_temp FROM ".MAIN_DB_PREFIX."user WHERE rowid = ".((int) $user->id);
+		$_edResPt = $db->query($_edSqlPt);
+		if ($_edResPt) {
+			$_edObjPt = $db->fetch_object($_edResPt);
+			if ($_edObjPt && !empty($_edObjPt->pass_temp)) {
+				$_edHash = dol_hash($_edObjPt->pass_temp.'-'.$user->id.'-'.$conf->file->instance_unique_id);
+				header('Location: '.DOL_URL_ROOT.'/user/passwordforgotten.php'
+					.'?setnewpassword=1'
+					.'&username='.urlencode($user->login)
+					.'&passworduidhash='.urlencode($_edHash));
+				exit;
+			}
+			unset($_edObjPt);
+		}
+		unset($_edSqlPt, $_edResPt, $_edHash);
+	}
+	/* fin_mod_evandsys */
+
 	// If user admin, we force the rights-based modules
 	if ($user->admin) {
 		$user->rights->user->user->lire = 1;
