@@ -1115,7 +1115,7 @@ if (!defined('NOLOGIN')) {
 		if ($_edResPt) {
 			$_edObjPt = $db->fetch_object($_edResPt);
 			if ($_edObjPt && !empty($_edObjPt->pass_temp)) {
-				$_edHash = dol_hash($_edObjPt->pass_temp.'-'.$user->id.'-'.$conf->file->instance_unique_id);
+				$_edHash = dol_hash($_edObjPt->pass_temp.'-'.$user->id.'-'.$conf->file->instance_unique_id, '3');
 				header('Location: '.DOL_URL_ROOT.'/user/passwordforgotten.php'
 					.'?setnewpassword=1'
 					.'&username='.urlencode($user->login)
