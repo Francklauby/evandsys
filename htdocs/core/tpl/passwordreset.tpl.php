@@ -144,17 +144,6 @@ if ($setnewpassword && $username && $passworduidhash) {
 	} else {
 		global $conf;
 
-		// mod_evandsys debug temporaire
-		$_edChain = $edituser->pass_temp.'-'.$edituser->id.'-'.$conf->file->instance_unique_id;
-		echo '<pre style="text-align:left;font-size:11px;word-break:break-all">';
-		echo 'entity: '.htmlspecialchars((string)$conf->entity)."\n";
-		echo 'uid: '.htmlspecialchars((string)$edituser->id)."\n";
-		echo 'pass_temp: '.htmlspecialchars((string)$edituser->pass_temp)."\n";
-		echo 'hash_from_url ('.strlen($passworduidhash).'): '.htmlspecialchars((string)$passworduidhash)."\n";
-		echo 'hash_md5_recomputed: '.htmlspecialchars(dol_hash($_edChain, '3'))."\n";
-		echo 'match: '.(dol_verifyHash($_edChain, $passworduidhash) ? 'TRUE' : 'FALSE')."\n";
-		echo '</pre>';
-		// fin mod_evandsys debug
 		if ($edituser->pass_temp && dol_verifyHash($edituser->pass_temp.'-'.$edituser->id.'-'.$conf->file->instance_unique_id, $passworduidhash)) {
 			// Clear session
 			unset($_SESSION['dol_login']);
@@ -200,7 +189,9 @@ if (!getDolGlobalString('ADD_UNSPLASH_LOGIN_BACKGROUND')) {
 
 <form id="login" name="login" method="POST" action="<?php echo $php_self; ?>">
 <input type="hidden" name="token" value="<?php echo newToken(); ?>">
-<input type="hidden" name="action" value="buildnewpassword">
+<!-- mod_evandsys — forçage changement de mot de passe au premier login : soumettre à validatenewpassword -->
+<input type="hidden" name="action" value="validatenewpassword">
+<!-- fin_mod_evandsys -->
 
 
 <!-- Title with version -->

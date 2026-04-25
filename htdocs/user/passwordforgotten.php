@@ -112,13 +112,33 @@ if (empty($reshook)) {
 			if ($edituser->pass_temp && dol_verifyHash($edituser->pass_temp.'-'.$edituser->id.'-'.$conf->file->instance_unique_id, $passworduidhash)) {
 				// Clear session
 				unset($_SESSION['dol_login']);
-				$_SESSION['dol_loginmesg'] = '<!-- warning -->'.$langs->transnoentitiesnoconv('NewPasswordValidated'); // Save message for the session page
 
-				$newpassword = $edituser->setPassword($user, $edituser->pass_temp, 0);
-				dol_syslog("passwordforgotten.php new password for user->id=".$edituser->id." validated in database");
+				/* mod_evandsys — si newpass1/newpass2 sont fournis et concordent, les utiliser comme
+				 * nouveau mot de passe plutôt que le mot de passe temporaire */
+				$_edNewpass1 = GETPOST('newpass1', 'none');
+				$_edNewpass2 = GETPOST('newpass2', 'none');
+				$_edPasswordOk = true;
+				if (!empty($_edNewpass1) && $_edNewpass1 === $_edNewpass2) {
+					$_edPasswordToSet = $_edNewpass1;
+				} elseif (!empty($_edNewpass1)) {
+					$langs->load("errors");
+					$message = '<div class="error">'.$langs->trans("PasswordsDoNotMatch").'</div>';
+					$_edPasswordOk = false;
+				} else {
+					$_edPasswordToSet = $edituser->pass_temp;
+				}
+				/* fin_mod_evandsys */
 
-				header("Location: ".DOL_URL_ROOT.'/?username='.urlencode($edituser->login));
-				exit;
+				if ($_edPasswordOk) {
+					$_SESSION['dol_loginmesg'] = '<!-- warning -->'.$langs->transnoentitiesnoconv('NewPasswordValidated'); // Save message for the session page
+
+					$newpassword = $edituser->setPassword($user, $_edPasswordToSet, 0);
+					dol_syslog("passwordforgotten.php new password for user->id=".$edituser->id." validated in database");
+
+					header("Location: ".DOL_URL_ROOT.'/?username='.urlencode($edituser->login));
+					exit;
+				}
+				unset($_edNewpass1, $_edNewpass2, $_edPasswordToSet, $_edPasswordOk);
 			} else {
 				$langs->load("errors");
 				$message = '<div class="error">'.$langs->trans("ErrorFailedToValidatePasswordReset").'</div>';
