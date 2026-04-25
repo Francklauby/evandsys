@@ -22,7 +22,8 @@
       "Bash(grep -l \"llx_\" /c/Users/f.lauby/PhpstormProjects/evandsys/htdocs/install/mysql/tables/*.sql)",
       "Bash(grep -E \"^/c/Users/f.lauby/PhpstormProjects/evandsys/htdocs/index.php$\")",
       "Bash(grep:*)",
-      "WebSearch"
+      "WebSearch",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\f.lauby\\\\PhpstormProjects\\\\evandsys\\\\htdocs\\\\custom\\\\entitydomain\" -Recurse -File | Where-Object {$_.Extension -eq '.php'} | Select-Object FullName)"
     ]
   }
 }
