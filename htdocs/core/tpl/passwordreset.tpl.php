@@ -144,7 +144,16 @@ if ($setnewpassword && $username && $passworduidhash) {
 	} else {
 		global $conf;
 
-		//print $edituser->pass_temp.'-'.$edituser->id.'-'.$conf->file->instance_unique_id.' '.$passworduidhash;
+		// mod_evandsys debug temporaire
+		echo '<pre style="text-align:left;font-size:11px;word-break:break-all">';
+		echo 'entity: '.htmlspecialchars((string)$conf->entity)."\n";
+		echo 'user found (id): '.htmlspecialchars((string)$edituser->id)."\n";
+		echo 'pass_temp: '.htmlspecialchars((string)$edituser->pass_temp)."\n";
+		echo 'chain: '.htmlspecialchars($edituser->pass_temp.'-'.$edituser->id.'-'.$conf->file->instance_unique_id)."\n";
+		echo 'hash_from_url: '.htmlspecialchars((string)$passworduidhash)."\n";
+		echo 'hash_recomputed: '.htmlspecialchars(dol_hash($edituser->pass_temp.'-'.$edituser->id.'-'.$conf->file->instance_unique_id))."\n";
+		echo '</pre>';
+		// fin mod_evandsys debug
 		if ($edituser->pass_temp && dol_verifyHash($edituser->pass_temp.'-'.$edituser->id.'-'.$conf->file->instance_unique_id, $passworduidhash)) {
 			// Clear session
 			unset($_SESSION['dol_login']);
