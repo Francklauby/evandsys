@@ -97,6 +97,13 @@ if (!$user->admin) {
 	accessforbidden();
 }
 
+/* mod_evandsys — les entités clientes gèrent leurs modules via une page dédiée (whitelist) */
+if ((int) $conf->entity > 1) {
+	header('Location: '.DOL_URL_ROOT.'/custom/entitydomain/admin/clientmodules.php');
+	exit;
+}
+/* fin_mod_evandsys */
+
 $familyinfo = array(
 	'hr' => array('position' => '001', 'label' => $langs->trans("ModuleFamilyHr")),
 	'crm' => array('position' => '006', 'label' => $langs->trans("ModuleFamilyCrm")),
