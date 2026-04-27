@@ -1038,7 +1038,13 @@ if (!defined('NOLOGIN')) {
 		$_SESSION["dol_screenwidth"] = isset($dol_screenwidth) ? $dol_screenwidth : '';
 		$_SESSION["dol_screenheight"] = isset($dol_screenheight) ? $dol_screenheight : '';
 		$_SESSION["dol_company"] = getDolGlobalString("MAIN_INFO_SOCIETE_NOM");
-		$_SESSION["dol_entity"] = $conf->entity;
+		/* mod_evandsys — ne pas persister le switch d'entité temporaire du super-admin en session */
+		if (empty($_SESSION['entitydomain_temp_entity_switch'])) {
+			$_SESSION["dol_entity"] = $conf->entity;
+		} else {
+			unset($_SESSION['entitydomain_temp_entity_switch']);
+		}
+		/* fin_mod_evandsys */
 		// Store value into session (values stored only if defined)
 		if (!empty($dol_hide_topmenu)) {
 			$_SESSION['dol_hide_topmenu'] = $dol_hide_topmenu;
