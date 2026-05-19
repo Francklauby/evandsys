@@ -114,22 +114,26 @@ SupplierCodeModel=Modèle de code fournisseur
 Gencod=Code-barres
 GencodBuyPrice=Code barre de la référence prix
 ##### Professional ID #####
-ProfId1Short=Id. prof. 1
-ProfId2Short=Id. prof. 2
-ProfId3Short=Id. prof. 3
-ProfId4Short=Id. prof. 4
-ProfId5Short=Id. prof. 5
-ProfId6Short=Id. prof. 6
+# mod_evandsys - Remplacement labels génériques par identifiants professionnels FR
+ProfId1Short=SIREN
+ProfId2Short=SIRET
+ProfId3Short=NAF/APE
+ProfId4Short=RCS/RM
+ProfId5Short=EORI
+ProfId6Short=RNA
+# fin_mod_evandsys
 ProfId7Short=Id prof. 7
 ProfId8Short=Id prof. 8
 ProfId9Short=Id prof. 9
 ProfId10Short=Id prof. 10
-ProfId1=Identifiant professionnel 1
-ProfId2=Identifiant professionnel 2
-ProfId3=Identifiant professionnel 3
-ProfId4=Identifiant professionnel 4
-ProfId5=Identifiant professionnel 5
-ProfId6=Identifiant professionnel 6
+# mod_evandsys - Remplacement labels génériques par identifiants professionnels FR
+ProfId1=SIREN
+ProfId2=SIRET
+ProfId3=Code NAF/APE
+ProfId4=N° RCS/RM
+ProfId5=Numéro EORI
+ProfId6=Numéro RNA
+# fin_mod_evandsys
 ProfId7=Identifiant professionnel 7
 ProfId8=Identifiant professionnel 8
 ProfId9=Identifiant professionnel 9
