@@ -311,6 +311,9 @@ if ($db !== null) {
 	$conf->setValues($db);
 }
 /* mod_evandsys - hooks entitydomain actifs sur toutes les entités (module activé sur entity 1 seulement) */
+if (!isset($conf->modules['entitydomain'])) {
+	$conf->modules['entitydomain'] = 'entitydomain';
+}
 if (!isset($conf->modules_parts['hooks']['entitydomain'])) {
 	$conf->modules_parts['hooks']['entitydomain'] = array('adminmodules', 'main');
 }
