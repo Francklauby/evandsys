@@ -310,16 +310,6 @@ if ($db !== null) {
 if ($db !== null) {
 	$conf->setValues($db);
 }
-/* mod_evandsys - hooks entitydomain actifs sur toutes les entités (module activé sur entity 1 seulement) */
-if (!isset($conf->modules['entitydomain'])) {
-	$conf->modules['entitydomain'] = 'entitydomain';
-}
-if (!isset($conf->modules_parts['hooks']['entitydomain'])) {
-	$conf->modules_parts['hooks']['entitydomain'] = array('adminmodules', 'main');
-}
-/* fin_mod_evandsys */
-
-
 // Set default language (must be after the setValues setting global conf 'MAIN_LANG_DEFAULT'. Page main.inc.php will overwrite langs->defaultlang with user value later)
 if (!defined('NOREQUIRETRAN')) {
 	$langcode = (GETPOST('lang', 'aZ09') ? GETPOST('lang', 'aZ09', 1) : getDolGlobalString('MAIN_LANG_DEFAULT', 'auto'));
