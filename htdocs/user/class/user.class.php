@@ -2710,6 +2710,20 @@ class User extends CommonObject
 		$urlwithouturlroot = preg_replace('/'.preg_quote(DOL_URL_ROOT, '/').'$/i', '', trim($dolibarr_main_url_root));
 		$urlwithroot = $urlwithouturlroot.DOL_URL_ROOT; // This is to use external domain name found into config file
 
+		/* mod_evandsys — pointer le lien vers le sous-domaine du client.
+		 * $dolibarr_main_url_root vaut toujours l'URL maitre : sans ceci, le lien de
+		 * reinitialisation envoye a un client de l'entite N le renvoie sur l'entite
+		 * maitre, ou son compte est introuvable. Le helper retombe sur l'URL maitre si
+		 * l'entite n'a pas de sous-domaine, donc le comportement natif est preserve
+		 * pour l'entite 1 comme pour une installation sans le module. */
+		$_edClassFile = DOL_DOCUMENT_ROOT.'/custom/entitydomain/class/EntityDomain.class.php';
+		if (!empty($this->entity) && file_exists($_edClassFile)) {
+			require_once $_edClassFile;
+			$urlwithroot = EntityDomain::clientBaseUrlForEntity($this->db, $urlwithroot, (int) $this->entity);
+		}
+		unset($_edClassFile);
+		/* fin_mod_evandsys */
+
 		if (!$changelater) {
 			$url = $urlwithroot.'/';
 			if (getDolGlobalString('URL_REDIRECTION_AFTER_CHANGEPASSWORD')) {
@@ -2731,9 +2745,12 @@ class User extends CommonObject
 			//print $password.'-'.$this->id.'-'.$conf->file->instance_unique_id;
 			$url = $urlwithroot.'/user/passwordforgotten.php?action=validatenewpassword';
 			$url .= '&username='.urlencode($this->login)."&passworduidhash=".urlencode(dol_hash($password.'-'.$this->id.'-'.$conf->file->instance_unique_id));
-			if (isModEnabled('multicompany')) {
-				$url .= '&entity='.(!empty($this->entity) ? $this->entity : 1);
-			}
+			/* mod_evandsys — entity toujours transmise.
+			 * D'origine, ce parametre n'etait ajoute que si le module multicompany
+			 * etait actif. Or passwordforgotten.php le lit dans tous les cas, et sans
+			 * lui l'utilisateur est cherche dans l'entite maitre. */
+			$url .= '&entity='.(!empty($this->entity) ? ((int) $this->entity) : 1);
+			/* fin_mod_evandsys */
 
 			dol_syslog(get_class($this)."::send_password changelater is on, url=".$url);
 

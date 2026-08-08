@@ -182,21 +182,6 @@ if (empty($reshook)) {
 				}
 			}
 
-			/* mod_evandsys — TRACE DE DIAGNOSTIC TEMPORAIRE de la demande de
-			 * reinitialisation. La page masque volontairement l'existence ou non d'un
-			 * compte : cette trace leve ce masque, donc A RETIRER APRES USAGE.
-			 * Tracee aussi en LOG_WARNING pour lecture cote serveur. */
-			$_edDbg = 'entity='.$conf->entity
-				.' | saisie='.$username
-				.' | est_un_email='.($isanemail ? 'oui' : 'non')
-				.' | result='.$result
-				.' | user_id='.((int) $edituser->id)
-				.' | user_entity='.((string) $edituser->entity)
-				.' | email_du_compte='.($edituser->email !== '' && $edituser->email !== null ? $edituser->email : '(VIDE)')
-				.' | droit_self_password='.($edituser->id > 0 ? ($edituser->hasRight('user', 'self', 'password') ? 'oui' : 'NON') : 'n/a')
-				.' | erreur='.($edituser->error !== '' ? $edituser->error : '(aucune)');
-			/* fin_mod_evandsys */
-
 			// Set the message to show (must be the same if login/email exists or not to avoid to guess them.
 			$messagewarning = '<div class="warning paddingtopbottom'.(!getDolGlobalString('MAIN_LOGIN_BACKGROUND') ? '' : ' backgroundsemitransparent boxshadow').'">';
 			if (!$isanemail) {
@@ -216,21 +201,12 @@ if (empty($reshook)) {
 					$message .= $messagewarning;
 				} else {
 					$newpassword = $edituser->setPassword($user, '', 1);
-					/* mod_evandsys */
-					$_edDbg .= ' | setPassword='.(is_int($newpassword) && $newpassword < 0 ? 'ECHEC ('.$newpassword.')' : 'ok');
-					/* fin_mod_evandsys */
 					if (is_int($newpassword) && $newpassword < 0) {
 						// Technical failure
 						$message = '<div class="error">'.$langs->trans("ErrorFailedToChangePassword").'</div>';
 					} else {
 						// Success to set temporary password, send email
-						/* mod_evandsys */
-						$_edSend = $edituser->send_password($user, $newpassword, 1);
-						$_edDbg .= ' | send_password='.$_edSend
-							.' | expediteur='.getDolGlobalString('MAIN_MAIL_EMAIL_FROM_PASSWORDRESET', getDolGlobalString('MAIN_MAIL_EMAIL_FROM'))
-							.' | erreur_envoi='.($edituser->error !== '' ? $edituser->error : '(aucune)');
-						if ($_edSend > 0) {
-						/* fin_mod_evandsys */
+						if ($edituser->send_password($user, $newpassword, 1) > 0) {
 							$message .= $messagewarning;
 							$username = '';
 						} else {
@@ -240,13 +216,6 @@ if (empty($reshook)) {
 					}
 				}
 			}
-
-			/* mod_evandsys — restitution de la trace, en fin de bloc pour inclure les
-			 * resultats de setPassword et send_password. A RETIRER APRES USAGE. */
-			dol_syslog('mod_evandsys passwordforgotten : '.$_edDbg, LOG_WARNING);
-			$message .= '<div class="warning" style="text-align:left;word-break:break-all;">'
-				.dol_escape_htmltag($_edDbg).'</div>';
-			/* fin_mod_evandsys */
 		}
 	}
 }
