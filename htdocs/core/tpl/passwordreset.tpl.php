@@ -144,25 +144,28 @@ if ($setnewpassword && $username && $passworduidhash) {
 	} else {
 		global $conf;
 
-		/* mod_evandsys — trace de diagnostic du lien magique de provisioning.
-		 * N'affiche rien tant que la constante ENTITYDOMAIN_DEBUG_PWDRESET n'est pas
-		 * posée sur l'entité. Sert à comparer ce que voit la vérification (entité
-		 * résolue par le sous-domaine) avec ce qu'a calculé le provisioning (entité 1).
-		 * À retirer une fois le parcours validé. */
-		if (getDolGlobalString('ENTITYDOMAIN_DEBUG_PWDRESET')) {
-			$_edChain = $edituser->pass_temp.'-'.$edituser->id.'-'.$conf->file->instance_unique_id;
-			$message .= '<div class="warning" style="text-align:left;word-break:break-all;">'
-				.'entity courante : '.dol_escape_htmltag((string) $conf->entity).'<br>'
-				.'user trouve : '.($edituser->id > 0 ? 'rowid '.((int) $edituser->id).' entity '.dol_escape_htmltag((string) $edituser->entity) : 'AUCUN').'<br>'
-				.'pass_temp : '.($edituser->pass_temp ? dol_escape_htmltag($edituser->pass_temp) : '(vide)').'<br>'
-				.'uid defini : '.(empty($conf->file->instance_unique_id) ? 'NON' : 'oui ('.strlen($conf->file->instance_unique_id).' car.)').'<br>'
-				.'salage : '.(getDolGlobalString('MAIN_SECURITY_SALT') ? 'defini' : 'aucun').'<br>'
-				.'algo : '.dol_escape_htmltag(getDolGlobalString('MAIN_SECURITY_HASH_ALGO')).'<br>'
-				.'empreinte calculee : '.dol_escape_htmltag(dol_hash($_edChain, '3')).'<br>'
-				.'empreinte recue : '.dol_escape_htmltag($passworduidhash)
-				.'</div>';
-			unset($_edChain);
-		}
+		/* mod_evandsys — TRACE DE DIAGNOSTIC TEMPORAIRE du lien magique de provisioning.
+		 *
+		 * ATTENTION : affichage inconditionnel, et pose avant la verification du jeton.
+		 * N'importe qui appelant cette page avec un login valide et un hash quelconque
+		 * verra le pass_temp en clair de ce compte. A RETIRER SANS DELAI.
+		 *
+		 * Compare ce que voit la verification (entite resolue par le sous-domaine) avec
+		 * ce qu'a calcule le provisioning (entite 1). */
+		$_edChain = $edituser->pass_temp.'-'.$edituser->id.'-'.$conf->file->instance_unique_id;
+		$message .= '<div class="warning" style="text-align:left;word-break:break-all;">'
+			.'entity courante : '.dol_escape_htmltag((string) $conf->entity).'<br>'
+			.'user trouve : '.($edituser->id > 0 ? 'rowid '.((int) $edituser->id).' entity '.dol_escape_htmltag((string) $edituser->entity) : 'AUCUN').'<br>'
+			.'login demande : '.dol_escape_htmltag((string) $username).'<br>'
+			.'pass_temp : '.($edituser->pass_temp ? dol_escape_htmltag($edituser->pass_temp) : '(vide)').'<br>'
+			.'uid defini : '.(empty($conf->file->instance_unique_id) ? 'NON' : 'oui ('.strlen($conf->file->instance_unique_id).' car.)').'<br>'
+			.'salage : '.(getDolGlobalString('MAIN_SECURITY_SALT') ? 'defini' : 'aucun').'<br>'
+			.'algo : '.dol_escape_htmltag(getDolGlobalString('MAIN_SECURITY_HASH_ALGO')).'<br>'
+			.'empreinte calculee : '.dol_escape_htmltag(dol_hash($_edChain, '3')).'<br>'
+			.'empreinte recue : '.dol_escape_htmltag((string) $passworduidhash).'<br>'
+			.'verifyHash : '.(dol_verifyHash($_edChain, (string) $passworduidhash) ? 'OK' : 'KO')
+			.'</div>';
+		unset($_edChain);
 		/* fin_mod_evandsys */
 
 		if ($edituser->pass_temp && dol_verifyHash($edituser->pass_temp.'-'.$edituser->id.'-'.$conf->file->instance_unique_id, $passworduidhash)) {
