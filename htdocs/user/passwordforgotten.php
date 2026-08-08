@@ -63,7 +63,15 @@ $username = GETPOST('username', 'alphanohtml');
 $passworduidhash = GETPOST('passworduidhash', 'alpha');
 $setnewpassword = GETPOST('setnewpassword', 'aZ09');
 
-$conf->entity = (GETPOSTINT('entity') ? GETPOSTINT('entity') : 1);
+/* mod_evandsys — ne pas ecraser l'entite resolue par le sous-domaine.
+ * D'origine : $conf->entity = (GETPOSTINT('entity') ? GETPOSTINT('entity') : 1);
+ * Le repli sur 1 rendait la recuperation de mot de passe inutilisable pour tout
+ * client, car le lien "Mot de passe oublie" de login.tpl.php ne transporte pas
+ * le parametre entity : l'utilisateur etait alors cherche dans l'entite maitre.
+ * On conserve donc l'entite deja etablie par entitydomain_boot.php, et le repli
+ * sur 1 ne joue plus que si aucune entite n'a ete resolue. */
+$conf->entity = (GETPOSTINT('entity') ? GETPOSTINT('entity') : (!empty($conf->entity) ? $conf->entity : 1));
+/* fin_mod_evandsys */
 
 // Instantiate hooks of thirdparty module only if not already define
 $hookmanager->initHooks(array('passwordforgottenpage'));
