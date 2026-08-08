@@ -334,7 +334,13 @@ if (!empty($morelogincontent)) {
 		$moreparam .= (strpos($moreparam, '?') === false ? '?' : '&').'dol_use_jmobile='.$conf->dol_use_jmobile;
 	}
 
-	print '<a class="alogin" href="'.$dol_url_root.'/index.php'.$moreparam.'">'.$langs->trans('BackToLoginPage').'</a>';
+	/* mod_evandsys */
+	// Lien « Retour page de connexion » retiré : à ce stade du provisioning SaaS, le
+	// client arrive depuis le lien magique de son email de bienvenue et n'a pas encore
+	// de mot de passe. Le renvoyer vers la page de connexion ne mène qu'à une impasse
+	// et le détourne de la seule action possible, choisir son mot de passe.
+	// print '<a class="alogin" href="'.$dol_url_root.'/index.php'.$moreparam.'">'.$langs->trans('BackToLoginPage').'</a>';
+	/* fin_mod_evandsys */
 	?>
 </div>
 
