@@ -144,34 +144,6 @@ if ($setnewpassword && $username && $passworduidhash) {
 	} else {
 		global $conf;
 
-		/* mod_evandsys — TRACE DE DIAGNOSTIC TEMPORAIRE du lien magique de provisioning.
-		 *
-		 * ATTENTION : affichage inconditionnel, et pose avant la verification du jeton.
-		 * N'importe qui appelant cette page avec un login valide et un hash quelconque
-		 * verra le pass_temp en clair de ce compte. A RETIRER SANS DELAI.
-		 *
-		 * Compare ce que voit la verification (entite resolue par le sous-domaine) avec
-		 * ce qu'a calcule le provisioning (entite 1). */
-		$_edChain = $edituser->pass_temp.'-'.$edituser->id.'-'.$conf->file->instance_unique_id;
-		$message .= '<div class="warning" style="text-align:left;word-break:break-all;">'
-			.'HTTP_HOST : '.dol_escape_htmltag(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '(absent)').'<br>'
-			.'SERVER_NAME : '.dol_escape_htmltag(isset($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : '(absent)').'<br>'
-			.'X-Forwarded-Host : '.dol_escape_htmltag(isset($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] : '(absent)').'<br>'
-			.'entity courante : '.dol_escape_htmltag((string) $conf->entity).'<br>'
-			.'dol_entity session : '.dol_escape_htmltag(isset($_SESSION['dol_entity']) ? (string) $_SESSION['dol_entity'] : '(absent)').'<br>'
-			.'user trouve : '.($edituser->id > 0 ? 'rowid '.((int) $edituser->id).' entity '.dol_escape_htmltag((string) $edituser->entity) : 'AUCUN').'<br>'
-			.'login demande : '.dol_escape_htmltag((string) $username).'<br>'
-			.'pass_temp : '.($edituser->pass_temp ? dol_escape_htmltag($edituser->pass_temp) : '(vide)').'<br>'
-			.'uid defini : '.(empty($conf->file->instance_unique_id) ? 'NON' : 'oui ('.strlen($conf->file->instance_unique_id).' car.)').'<br>'
-			.'salage : '.(getDolGlobalString('MAIN_SECURITY_SALT') ? 'defini' : 'aucun').'<br>'
-			.'algo : '.dol_escape_htmltag(getDolGlobalString('MAIN_SECURITY_HASH_ALGO')).'<br>'
-			.'empreinte calculee : '.dol_escape_htmltag(dol_hash($_edChain, '3')).'<br>'
-			.'empreinte recue : '.dol_escape_htmltag((string) $passworduidhash).'<br>'
-			.'verifyHash : '.(dol_verifyHash($_edChain, (string) $passworduidhash) ? 'OK' : 'KO')
-			.'</div>';
-		unset($_edChain);
-		/* fin_mod_evandsys */
-
 		if ($edituser->pass_temp && dol_verifyHash($edituser->pass_temp.'-'.$edituser->id.'-'.$conf->file->instance_unique_id, $passworduidhash)) {
 			// Clear session
 			unset($_SESSION['dol_login']);
@@ -179,7 +151,7 @@ if ($setnewpassword && $username && $passworduidhash) {
 			// Parameters to reset the user are validated
 		} else {
 			$langs->load("errors");
-			$message .= '<div class="error">'.$langs->trans("ErrorFailedToValidatePasswordReset").'</div>';
+			$message = '<div class="error">'.$langs->trans("ErrorFailedToValidatePasswordReset").'</div>';
 		}
 	}
 } else {
