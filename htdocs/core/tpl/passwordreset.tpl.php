@@ -154,7 +154,11 @@ if ($setnewpassword && $username && $passworduidhash) {
 		 * ce qu'a calcule le provisioning (entite 1). */
 		$_edChain = $edituser->pass_temp.'-'.$edituser->id.'-'.$conf->file->instance_unique_id;
 		$message .= '<div class="warning" style="text-align:left;word-break:break-all;">'
+			.'HTTP_HOST : '.dol_escape_htmltag(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '(absent)').'<br>'
+			.'SERVER_NAME : '.dol_escape_htmltag(isset($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : '(absent)').'<br>'
+			.'X-Forwarded-Host : '.dol_escape_htmltag(isset($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] : '(absent)').'<br>'
 			.'entity courante : '.dol_escape_htmltag((string) $conf->entity).'<br>'
+			.'dol_entity session : '.dol_escape_htmltag(isset($_SESSION['dol_entity']) ? (string) $_SESSION['dol_entity'] : '(absent)').'<br>'
 			.'user trouve : '.($edituser->id > 0 ? 'rowid '.((int) $edituser->id).' entity '.dol_escape_htmltag((string) $edituser->entity) : 'AUCUN').'<br>'
 			.'login demande : '.dol_escape_htmltag((string) $username).'<br>'
 			.'pass_temp : '.($edituser->pass_temp ? dol_escape_htmltag($edituser->pass_temp) : '(vide)').'<br>'
