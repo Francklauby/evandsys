@@ -136,6 +136,11 @@ $colorbackhmenu1 = implode(',', colorStringToArray($colorbackhmenu1)); // Normal
 $edituser = new User($db);
 
 
+/* mod_evandsys — repérer un lien inutilisable pour ne pas presenter le formulaire.
+ * Les deux branches d'echec ci-dessous levent ce drapeau, exploite juste apres. */
+$_edLinkUnusable = 0;
+/* fin_mod_evandsys */
+
 // Validate parameters
 if ($setnewpassword && $username && $passworduidhash) {
 	$result = $edituser->fetch(0, $username);
@@ -152,12 +157,36 @@ if ($setnewpassword && $username && $passworduidhash) {
 		} else {
 			$langs->load("errors");
 			$message = '<div class="error">'.$langs->trans("ErrorFailedToValidatePasswordReset").'</div>';
+			/* mod_evandsys */
+			$_edLinkUnusable = 1;
+			/* fin_mod_evandsys */
 		}
 	}
 } else {
 	$langs->load("errors");
 	$message = '<div class="error">'.$langs->trans("ErrorFailedToValidatePasswordReset").'</div>';
+	/* mod_evandsys */
+	$_edLinkUnusable = 1;
+	/* fin_mod_evandsys */
 }
+
+/* mod_evandsys — encart d'explication a la place du formulaire.
+ * D'origine, un lien de choix du mot de passe invalide affichait tout de meme le
+ * formulaire, sous un discret "Echec de la validation" : le client saisissait son mot
+ * de passe pour rien, sans savoir pourquoi ni quoi faire. Or ce lien a maintenant une
+ * echeance (purge du module entitydomain), le cas devient ordinaire.
+ * Le texte et le HTML sont dans le module, pour ne pas les mettre ici. Si le module est
+ * absent, l'encart reste vide et le comportement natif est integralement conserve. */
+$_edUnusableNotice = '';
+if (!empty($_edLinkUnusable)) {
+	$_edClassFile = DOL_DOCUMENT_ROOT.'/custom/entitydomain/class/EntityDomainMagicLink.class.php';
+	if (file_exists($_edClassFile)) {
+		require_once $_edClassFile;
+		$_edUnusableNotice = EntityDomainMagicLink::unusableLinkNotice($langs, (int) $conf->entity);
+	}
+	unset($_edClassFile);
+}
+/* fin_mod_evandsys */
 
 
 ?>
@@ -222,6 +251,15 @@ if (!empty($disablenofollow)) {
 <br>
 
 <div id="login_right">
+
+<?php
+/* mod_evandsys — lien inutilisable : l'encart remplace les champs et le bouton.
+ * Voir le bloc de detection plus haut dans ce fichier. */
+if ($_edUnusableNotice !== '') {
+	print $_edUnusableNotice;
+} else {
+	/* fin_mod_evandsys */
+	?>
 
 <div class="tagtable centpercent" title="Login pass" >
 
@@ -307,6 +345,12 @@ if (!empty($morelogincontent)) {
 
 </div>
 
+<?php
+/* mod_evandsys */
+} // fin du else ouvert avant les champs
+/* fin_mod_evandsys */
+?>
+
 </div> <!-- end div login_right -->
 
 </div> <!-- end div login_line1 -->
@@ -314,8 +358,18 @@ if (!empty($morelogincontent)) {
 
 <div id="login_line2" style="clear: both">
 
+<?php
+/* mod_evandsys — rien a enregistrer quand le lien est inutilisable */
+if ($_edUnusableNotice === '') {
+	/* fin_mod_evandsys */
+	?>
 <!-- Button "Regenerate and Send password" -->
 <br><input type="submit" <?php echo $disabled; ?> class="butAction butActionLogin noborderfocus small" name="button_password" value="<?php echo $langs->trans('Save'); ?>" tabindex="4" />
+<?php
+/* mod_evandsys */
+}
+/* fin_mod_evandsys */
+?>
 
 <br>
 <div class="center" style="margin-top: 15px;">
@@ -372,7 +426,12 @@ if ($mode == 'dolibarr' || !$disabled) {
 
 <br>
 
-<?php if (!empty($message)) { ?>
+<?php
+/* mod_evandsys — le message d'erreur natif est redondant avec l'encart, et bien moins
+ * clair : ne l'afficher que si l'encart n'a pas pris le relais. Le message reste en
+ * revanche non vide, ce qui suffit a masquer le "Saisissez votre nouveau mot de passe
+ * ici" juste au-dessus. */
+if (!empty($message) && $_edUnusableNotice === '') { /* fin_mod_evandsys */ ?>
 	<div class="center login_main_message">
 	<?php dol_htmloutput_mesg($message, [], '', 1); ?>
 	</div>
