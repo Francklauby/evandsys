@@ -133,7 +133,19 @@ if (empty($reshook)) {
 					$message = '<div class="error">'.$langs->trans("PasswordsDoNotMatch").'</div>';
 					$_edPasswordOk = false;
 				} else {
-					$_edPasswordToSet = $edituser->pass_temp;
+					// Plus de promotion silencieuse de pass_temp en mot de passe reel.
+					// Elle n'avait de sens que quand l'email de reinitialisation
+					// transportait ce mot de passe en clair : le client cliquait, puis
+					// s'en servait pour se connecter. Il ne le recoit plus (voir
+					// User::send_password), et tous les liens menent desormais a ce
+					// formulaire. Promouvoir pass_temp lui donnerait donc un mot de passe
+					// qu'il ignore, et le verrouillerait hors de son espace jusqu'a une
+					// nouvelle demande.
+					$langs->load("errors");
+					$message = '<div class="error">'
+						.$langs->trans("ErrorFieldRequired", $langs->transnoentitiesnoconv("NewPassword"))
+						.'</div>';
+					$_edPasswordOk = false;
 				}
 				/* fin_mod_evandsys */
 

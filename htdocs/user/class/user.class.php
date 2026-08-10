@@ -2743,7 +2743,18 @@ class User extends CommonObject
 			$mesg .= $user->getFullName($outputlangs); // Username that send the email (not the user for who we want to reset password)
 		} else {
 			//print $password.'-'.$this->id.'-'.$conf->file->instance_unique_id;
-			$url = $urlwithroot.'/user/passwordforgotten.php?action=validatenewpassword';
+			/* mod_evandsys — le lien mene au formulaire, pas a la validation immediate.
+			 * D'origine : '?action=validatenewpassword', qui promeut aussitot pass_temp en
+			 * mot de passe reel et renvoie a la page de connexion. Ce parcours suppose que
+			 * le client ait recu ce mot de passe par email — ce qu'on ne fait plus, voir le
+			 * bloc de composition du corps plus bas. Il arriverait donc devant une
+			 * connexion avec un mot de passe qu'il ignore.
+			 * Avec setnewpassword=1, il choisit le sien, exactement comme sur le lien
+			 * magique du provisioning. Suppose les blocs mod_evandsys de
+			 * passwordforgotten.php et de passwordreset.tpl.php, qui portent le formulaire
+			 * et l'enregistrement de newpass1. */
+			$url = $urlwithroot.'/user/passwordforgotten.php?setnewpassword=1';
+			/* fin_mod_evandsys */
 			$url .= '&username='.urlencode($this->login)."&passworduidhash=".urlencode(dol_hash($password.'-'.$this->id.'-'.$conf->file->instance_unique_id));
 			/* mod_evandsys — entity toujours transmise.
 			 * D'origine, ce parametre n'etait ajoute que si le module multicompany
@@ -2764,6 +2775,35 @@ class User extends CommonObject
 			$mesg .= $outputlangs->transnoentitiesnoconv("YouMustClickToChange")." :<br>\n";
 			$mesg .= '<a href="'.$url.'" rel="noopener">'.$outputlangs->transnoentitiesnoconv("ConfirmPasswordChange").'</a>'."<br>\n<br>\n";
 			$mesg .= $outputlangs->transnoentitiesnoconv("ForgetIfNothing")."<br>\n<br>\n";
+
+			/* mod_evandsys — sujet et corps par le template du module.
+			 * Le corps compose ci-dessus contient le mot de passe en clair
+			 * (« Password = xxx »). Or ce mot de passe ne sert jamais : le bloc
+			 * mod_evandsys de passwordforgotten.php fait saisir au client le sien dans le
+			 * formulaire. On deposait donc un identifiant fonctionnel dans une boite mail
+			 * a chaque demande de reinitialisation, sans aucune utilite — et pour un
+			 * compte administrateur d'entite cliente.
+			 * Le template porte aussi la charte, absente du corps natif, et corrige le
+			 * sujet double (« [Titre] Votre mot de passe pour Titre »).
+			 * Le corps natif reste compose au-dessus et sert de repli : module absent ou
+			 * template illisible, le comportement d'origine est integralement conserve.
+			 * Non applique a la branche !$changelater ci-dessus : c'est l'action
+			 * volontaire « envoyer un nouveau mot de passe » de la fiche utilisateur, qui
+			 * n'offre aucun lien de choix — lui retirer le mot de passe la casserait. */
+			$_edMailFile = DOL_DOCUMENT_ROOT.'/custom/entitydomain/class/EntityDomainMail.class.php';
+			if (file_exists($_edMailFile)) {
+				require_once $_edMailFile;
+				$_edMail = EntityDomainMail::passwordResetEmail($this->login, $url, $appli);
+				if (is_array($_edMail) && !empty($_edMail['body'])) {
+					$mesg = $_edMail['body'];
+					if (!empty($_edMail['subject'])) {
+						$subject = $_edMail['subject'];
+					}
+				}
+				unset($_edMail);
+			}
+			unset($_edMailFile);
+			/* fin_mod_evandsys */
 		}
 
 		$trackid = 'use'.$this->id;
