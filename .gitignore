@@ -94,3 +94,8 @@ phpstan_custom.neon
 
 # ignore .htaccess files
 .htaccess
+
+# Fichiers locaux / artefacts outillage Claude Code (ne pas versionner)
+.claude/settings.local.json
+.claude/.brain-security-session
+.claude-audit.jsonl
