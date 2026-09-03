@@ -39,7 +39,9 @@ Les deux copies sont sur le **même commit** au moment de la rédaction (`cfdbfa
   initial « parcours standard » `fr:204/205/210/212` (prise en charge / approbation / **refus** /
   **encaissement**), action **manuelle** du client sur `received.php`, journal append-only
   `llx_facturex_received_event` + retry. Cohérent avec « on n'accuse pas réception » (rien
-  d'automatique). Détail + points à trancher : brief facturex, « Chantier 4 V3 ». **À développer.**
+  d'automatique). **Développé le 2026-09-03** (table journal `llx_facturex_received_event`, boutons
+  sur `received.php`, retry par le cron ; SQL/lint OK en local) — **reste le test live sur VPS**
+  (entité 7 sandbox) + lever la réserve `fr:211`/`fr:212`. Détail : brief facturex, « Chantier 4 V3 ».
 
 ## ⚑ Checklist go-live prod SUPER PDP (VPS)
 
