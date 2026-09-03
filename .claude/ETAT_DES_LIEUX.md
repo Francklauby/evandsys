@@ -516,7 +516,9 @@ scripts SQL **idempotents** (`IF NOT EXISTS` / `IF EXISTS`).
   transmis à SUPER PDP via `POST /invoice_events` (badges verts, `send_state='sent'`+`superpdp_event_id`
   dans `llx_facturex_received_event`). Acquis : réserve fr:211/212 levée (`fr:211` côté acheteur) ; le
   **refus impose un motif normalisé** (13 codes AFNOR, texte libre = HTTP 400) → liste déroulante
-  obligatoire. Commits facturex `2a56bba`+`fa85e11`+`0def201`.
+  obligatoire. **Prise en charge `fr:204` = accusé technique posé AUTOMATIQUEMENT par le cron de
+  réception** (pas de bouton) ; approbation/refus/paiement restent manuels. Auto-`fr:204` confirmée en
+  runtime (le cron l'a posée seule sur 420664). Commits facturex `2a56bba`+`fa85e11`+`0def201`+`e6bc480`.
 - **2026-07-17** : visibilité du bandeau SUPER PDP chez les clients (profils + hooks en base).
 - **2026-08-13** (local Docker, entité 18 `afileta`) : test SUPER PDP **parties 1-2** — bandeau rouge
   visible sur `index.php` et `compta/facture/list.php`, absent sur `societe/list.php`, sur le setup et
