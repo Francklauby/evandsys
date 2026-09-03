@@ -39,9 +39,13 @@ Les deux copies sont sur le **même commit** au moment de la rédaction (`cfdbfa
   initial « parcours standard » `fr:204/205/210/212` (prise en charge / approbation / **refus** /
   **encaissement**), action **manuelle** du client sur `received.php`, journal append-only
   `llx_facturex_received_event` + retry. Cohérent avec « on n'accuse pas réception » (rien
-  d'automatique). **Développé le 2026-09-03** (table journal `llx_facturex_received_event`, boutons
-  sur `received.php`, retry par le cron ; SQL/lint OK en local) — **reste le test live sur VPS**
-  (entité 7 sandbox) + lever la réserve `fr:211`/`fr:212`. Détail : brief facturex, « Chantier 4 V3 ».
+  d'automatique). **✅ Livré ET testé VPS le 2026-09-03** (entité 7 sandbox, facture 420664) :
+  approbation `fr:205`, paiement émis `fr:211` et refus motivé `fr:210`+`DOUBLON` transmis à SUPER
+  PDP (badges verts, `send_state='sent'`+`superpdp_event_id`). Table journal
+  `llx_facturex_received_event`, boutons sur `received.php`, retry par le cron. **Réserve
+  `fr:211`/`fr:212` levée** (c'est `fr:211` côté acheteur). Découverte au test : le **refus exige un
+  motif normalisé** (13 codes AFNOR renvoyés par l'API) — liste déroulante obligatoire. Détail :
+  brief facturex, « Chantier 4 V3 ».
 
 ## ⚑ Checklist go-live prod SUPER PDP (VPS)
 
@@ -245,7 +249,7 @@ Aucune dépendance Composer, pure PHP.
 |---|---|---|
 | 2 | Champs conformité tiers + alertes | ✅ livré |
 | 3 | Connecteur SUPER PDP (OAuth + transmission + polling) | ✅ livré, ✅ testé en sandbox (2026-06-18), ✅ OAuth bout-en-bout validé VPS (2026-09-03) |
-| 4 | Réception factures fournisseurs | V1 (affichage SIRET) ✅ + V2 (archive des PDF reçus + page « Factures reçues ») ✅ livrés 2026-08-14, ✅ **testé VPS bout-en-bout 2026-09-03** (sandbox) ; génération de factures fournisseur Dolibarr ⬜ (chantier ultérieur) |
+| 4 | Réception factures fournisseurs | V1 (affichage SIRET) ✅ + V2 (archive des PDF reçus + page « Factures reçues ») ✅ livrés 2026-08-14, ✅ testé VPS 2026-09-03 ; V3 (statuts du cycle de vie renvoyés à SUPER PDP : prise en charge / approbation / refus motivé / paiement) ✅ **livré + testé VPS 2026-09-03** ; génération de factures fournisseur Dolibarr ⬜ (chantier ultérieur, à l'approbation) |
 | 5 | Embed XML dans PDF Factur-X | ✅ livré |
 | 6 | E-reporting B2C | ⬜ 2027 |
 
@@ -507,6 +511,12 @@ scripts SQL **idempotents** (`IF NOT EXISTS` / `IF EXISTS`).
   `DOL_DATA_ROOT/facturex/received/7/`, page `admin/received.php` + téléchargement OK, dédup OK,
   curseur avancé). Bugs corrigés au 1er runtime : `8145097` (libs cron `dol_is_dir`/`dol_stringtotime`)
   et `bb85cb8` (expand `en_invoice.totals` invalide → HTTP 400).
+- **2026-09-03** (VPS, entité 7, sandbox, facture 420664) : chantier 4 V3 **statuts du cycle de vie**
+  de bout en bout — approbation (`fr:205`), paiement émis (`fr:211`) et refus motivé (`fr:210`+`DOUBLON`)
+  transmis à SUPER PDP via `POST /invoice_events` (badges verts, `send_state='sent'`+`superpdp_event_id`
+  dans `llx_facturex_received_event`). Acquis : réserve fr:211/212 levée (`fr:211` côté acheteur) ; le
+  **refus impose un motif normalisé** (13 codes AFNOR, texte libre = HTTP 400) → liste déroulante
+  obligatoire. Commits facturex `2a56bba`+`fa85e11`+`0def201`.
 - **2026-07-17** : visibilité du bandeau SUPER PDP chez les clients (profils + hooks en base).
 - **2026-08-13** (local Docker, entité 18 `afileta`) : test SUPER PDP **parties 1-2** — bandeau rouge
   visible sur `index.php` et `compta/facture/list.php`, absent sur `societe/list.php`, sur le setup et
