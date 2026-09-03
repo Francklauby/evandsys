@@ -6,6 +6,82 @@ Les deux copies sont sur le **même commit** au moment de la rédaction (`cfdbfa
 
 ---
 
+## Mise à jour de session — 2026-09-03
+
+- **Chantier 3 SUPER PDP validé de bout en bout sur le VPS** (entité 7 `infansgroup`, sandbox) :
+  bandeau → activation → OAuth 5 étapes (société fictive Tricatel/000000001) → callback →
+  **retour sur le bon sous-domaine `infansgroup`** → statut « Connecté ». En base
+  (`llx_facturex_superpdp_tokens`, `fk_entity=7`) : refresh durable présent, `token_expires_at`
+  du jour, `superpdp_siren` **vide** (normal, `number_scheme=sandbox`), **`superpdp_account_id=9497`**
+  → preuve que `fetchCompanyIdentity()` → `GET companies/me` marche et que le garde-fou SIREN
+  n'est plus inerte.
+- **Cause racine du blocage du 14/08 = fausse piste OPcache.** En réalité
+  `FACTUREX_SUPERPDP_SANDBOX=1` était posé sur l'entité **1** (privée au maître, non héritée) au
+  lieu de l'entité **0** → l'entité 7 ne voyait pas le flag → SIREN émis en sandbox →
+  `invalid_request`. Même bug que le correctif local du 13/08, jamais reporté en prod. Corrigé :
+  `UPDATE llx_const SET entity=0 WHERE name='FACTUREX_SUPERPDP_SANDBOX' AND entity=1;`. Le VPS a
+  `opcache.validate_timestamps=On` + `revalidate_freq=2` → OPcache ne pouvait pas être en cause.
+  Rien à changer sur le webhook.
+- **Chantier 4 V2 (réception) validé de bout en bout sur le VPS** (entité 7, sandbox). Schéma posé
+  (`llx_facturex_received` + colonne curseur `last_sync_received_invoice_id`), cron
+  `SyncSuperPdpReceived::syncAll` enregistré en entité 1. Facture entrante injectée via l'autre
+  société sandbox **000000002** (= entité 1, « Burger Queen », compte 9498) :
+  `generate_test_invoice` (vendeur = société du token, acheteur = l'autre société auto) puis
+  `POST /v1.beta/invoices` → livrée à 000000001. Le sync a archivé la ligne (vendeur Burger Queen,
+  TTC 1863,79 €), le PDF (`superpdp_420664.pdf`) sous `DOL_DATA_ROOT/facturex/received/7/`, la page
+  `admin/received.php` l'affiche + téléchargement OK, 2ᵉ passage sans doublon (dédup
+  `uk_received_entity_invoice`), curseur avancé. **Deux bugs corrigés au passage** (1er runtime) :
+  `8145097` (charger `files.lib.php`/`date.lib.php`, sinon fatale `dol_is_dir()` en cron) et
+  `bb85cb8` (`expand[]=en_invoice.totals` invalide → HTTP 400 ; `totals` est une propriété directe
+  de `en_invoice`).
+- **Chantier 4 V3 cadré** (« que fait-on d'une facture IN reçue ») : statuts du cycle de vie
+  renvoyés à SUPER PDP via `POST /v1.beta/invoice_events` (pas `PATCH /status`, fantôme). Périmètre
+  initial « parcours standard » `fr:204/205/210/212` (prise en charge / approbation / **refus** /
+  **encaissement**), action **manuelle** du client sur `received.php`, journal append-only
+  `llx_facturex_received_event` + retry. Cohérent avec « on n'accuse pas réception » (rien
+  d'automatique). Détail + points à trancher : brief facturex, « Chantier 4 V3 ». **À développer.**
+
+## ⚑ Checklist go-live prod SUPER PDP (VPS)
+
+État au **2026-09-03** : le VPS est **déjà basculé en prod au niveau global** —
+`FACTUREX_SUPERPDP_SANDBOX = 0` sur l'entité **0**, avec un override `= 1` sur l'entité **7**
+(`infansgroup`) qui reste la **voie de test sandbox** (l'entité surcharge l'entité 0, cf. §7).
+Les endpoints (`api.superpdp.tech`) et le `client_id` sont partagés sandbox/prod ; le mode est
+choisi au consentement SUPER PDP, et notre flag ne gouverne que la transmission du vrai SIREN.
+
+Avant d'onboarder un **vrai client** en prod, rester vigilant sur :
+
+- [ ] **Agrément prod côté SUPER PDP** — l'app/dashboard doit être activée en **production** (pas
+      seulement sandbox). Même endpoint, mais sans ça la 1ʳᵉ activation client échouera. Préalable
+      externe, hors code. **À confirmer.**
+- [x] ~~**Chantier 4 V2 (réception)**~~ — **validé en runtime le 2026-09-03** (VPS, entité 7,
+      sandbox). Recette d'injection d'une entrante : token de la 2ᵉ société sandbox 000000002
+      (entité 1) → `generate_test_invoice` → `POST /v1.beta/invoices` → livrée à 000000001. Voir §8.
+- [ ] **Entités de test 8-18 désormais en « prod »** — ne pas cliquer « Activer » dessus (vrai KYC),
+      ou leur poser le même override `FACTUREX_SUPERPDP_SANDBOX=1, entity=N` pour tester.
+- [ ] **`FACTUREX_OD_ALERT_EMAIL` vide** — l'alerte SIREN part sinon sur `MAIN_MAIL_EMAIL_FROM` (§6).
+- [ ] **Rappel** : le contrôle de cohérence SIREN redevient actif en prod (désactivé en sandbox) —
+      écart = LOG_WARNING + email OD + `oauth_warning=SIREN_MISMATCH`, **non bloquant**.
+
+Rien ne part par erreur en prod aujourd'hui : `FACTUREX_AUTO_TRANSMIT` n'agit que sur une entité
+avec token valide, et la seule qui en a un (7) est en sandbox.
+
+---
+
+## Mise à jour de session — 2026-08-14
+
+- **facturex, 5 commits poussés** (repo `main`) : rework SIREN via `companies/me` (`b5ac1b9`),
+  spec OpenAPI versionnée (`b2c603e`), chantier 4 V1 SIRET de réception (`6d2b6a4`), chantier 4 V2
+  archivage des factures reçues (`d053265`), protocole de test à jour (`184b310`). Core : untrack
+  de `settings.local.json` + `.gitignore` (`3c3ed6ec`, étanchéité LDLC).
+- **Test SUPER PDP VPS entamé puis interrompu** (console VPS inaccessible, pare-feu). Entité de test
+  unique = **7 `infansgroup`**, en **sandbox**. **Blocage** : l'authorize envoie `superpdp_company_number`
+  en sandbox → `invalid_request`, alors que le code à jour (déployé par webhook, vert 14:38) ne le devrait
+  pas → **bytecode périmé suspecté (OPcache) ou déploiement pas sur le bon commit**. Détail + plan de reprise :
+  mémoire projet `test-superpdp-vps-blocage-opcache`. À reprendre depuis le domicile.
+- **Double affichage corrigé** : l'encart V1 « SIRET non renseigné » dupliquait le bouton de la carte
+  « Informations vendeur ». État vide de la carte réception allégé (message concis, sans bouton).
+
 ## Mise à jour de session — 2026-08-13 (local Docker)
 
 - **Mail routé vers mailpit** : `MAIN_MAIL_SENDMODE=smtps` + serveur `mailpit:1025`, TLS off, sur
@@ -166,8 +242,8 @@ Aucune dépendance Composer, pure PHP.
 | # | Chantier | État |
 |---|---|---|
 | 2 | Champs conformité tiers + alertes | ✅ livré |
-| 3 | Connecteur SUPER PDP (OAuth + transmission + polling) | ✅ livré, ✅ testé en sandbox (2026-06-18) |
-| 4 | Réception factures fournisseurs | V1 (affichage SIRET) ✅ + V2 (archive des PDF reçus + page « Factures reçues ») ✅ livrés 2026-08-14, **test VPS à faire** ; génération de factures fournisseur Dolibarr ⬜ (chantier ultérieur) |
+| 3 | Connecteur SUPER PDP (OAuth + transmission + polling) | ✅ livré, ✅ testé en sandbox (2026-06-18), ✅ OAuth bout-en-bout validé VPS (2026-09-03) |
+| 4 | Réception factures fournisseurs | V1 (affichage SIRET) ✅ + V2 (archive des PDF reçus + page « Factures reçues ») ✅ livrés 2026-08-14, ✅ **testé VPS bout-en-bout 2026-09-03** (sandbox) ; génération de factures fournisseur Dolibarr ⬜ (chantier ultérieur) |
 | 5 | Embed XML dans PDF Factur-X | ✅ livré |
 | 6 | E-reporting B2C | ⬜ 2027 |
 
@@ -222,9 +298,10 @@ distinct `GET /v1.beta/companies/me` → champ **`number`** qualifié par **`num
 - `checkSirenConsistency()` / `saveToken()` / `setup.php` : inchangés, la ligne token est
   désormais réellement peuplée → le garde-fou n'est **plus inerte**.
 
-**Reste : test live du succès sur le VPS.** En local, seuls des tokens de seed périmés (entités
-1 et 7) existent → `companies/me` renverrait 401 (chemin d'échec seulement). Le chemin de succès
-exige le callback OAuth réel (redirect_uri joignable + compte sandbox), donc le VPS.
+**✅ TESTÉ LIVE sur le VPS le 2026-09-03** (entité 7, sandbox) : OAuth réel → `companies/me` →
+`superpdp_account_id=9497` persisté, `superpdp_siren` vide (sandbox). Le garde-fou n'est plus
+inerte et le rework est prouvé en runtime. (Le blocage du 14/08 venait de la constante sandbox
+posée sur l'entité 1 au lieu de 0, pas d'OPcache — voir §8 et la MÀJ du 03/09.)
 
 Spec : `htdocs/custom/facturex/dev/superpdp_openapi.json` (copie locale) /
 `https://api.superpdp.tech/openapi/superpdp.json`. Détail : voir mémoires projet
@@ -417,6 +494,17 @@ scripts SQL **idempotents** (`IF NOT EXISTS` / `IF EXISTS`).
   lien magique fonctionnel jusqu'à la connexion.
 - **2026-08-10** : chaîne cron complète (cron système → lanceur → job 82 → purge).
 - **2026-06-18** : chantier 3 facturex testé en **sandbox** SUPER PDP.
+- **2026-09-03** (VPS, entité 7 `infansgroup`, sandbox) : chantier 3 **de bout en bout** — activation →
+  OAuth 5 étapes → callback → **retour sur le bon sous-domaine** → « Connecté ». Token persisté
+  (`superpdp_account_id=9497`, `superpdp_siren` vide en sandbox) → rework `companies/me` prouvé en
+  runtime, garde-fou SIREN plus inerte. Blocage du 14/08 = `FACTUREX_SUPERPDP_SANDBOX` sur entité 1
+  au lieu de 0 (pas OPcache), corrigé.
+- **2026-09-03** (VPS, entité 7, sandbox) : chantier 4 V2 **réception** de bout en bout — entrante
+  injectée depuis 000000002 (entité 1) via `generate_test_invoice`+`POST /invoices`, archivée par
+  `SyncSuperPdpReceived` (ligne `llx_facturex_received` vendeur Burger Queen TTC 1863,79 €, PDF sous
+  `DOL_DATA_ROOT/facturex/received/7/`, page `admin/received.php` + téléchargement OK, dédup OK,
+  curseur avancé). Bugs corrigés au 1er runtime : `8145097` (libs cron `dol_is_dir`/`dol_stringtotime`)
+  et `bb85cb8` (expand `en_invoice.totals` invalide → HTTP 400).
 - **2026-07-17** : visibilité du bandeau SUPER PDP chez les clients (profils + hooks en base).
 - **2026-08-13** (local Docker, entité 18 `afileta`) : test SUPER PDP **parties 1-2** — bandeau rouge
   visible sur `index.php` et `compta/facture/list.php`, absent sur `societe/list.php`, sur le setup et
