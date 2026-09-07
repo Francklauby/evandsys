@@ -6,6 +6,34 @@ Les deux copies sont sur le **même commit** au moment de la rédaction (`cfdbfa
 
 ---
 
+## Mise à jour de session — 2026-09-07
+
+- **Piste B (facture fournisseur) — DÉVELOPPÉE, COMMITÉE et VALIDÉE VPS de bout en bout.** À
+  l'approbation d'une facture reçue (`fr:205`, opt-in par entité
+  `FACTUREX_RECEIVED_CREATE_SUPPLIER_INVOICE`), génération d'une `FactureFournisseur` Dolibarr en
+  **brouillon**. Lignes récupérées via l'**API** (`GET /v1.beta/invoices/{id}` → `en_invoice.lines`,
+  BG-25) et **non** par parsing du CII embarqué. Nouvelle classe `FactureXSupplierInvoiceBuilder`,
+  `fetchReceivedInvoiceDetail()` côté connecteur, colonne d'idempotence `fk_facture_fourn`. Commits
+  facturex (branche main) : `a74ef81` (reconnexion auto `authorizedRequest` + fetch détail),
+  `8c21756` (piste B + politique de rapprochement), `f29e0c2` (doc dev).
+- **Politique de rapprochement du fournisseur tranchée puis validée** : `lookupSupplier` en recherche
+  **tierée** SIRET → SIREN → TVA (jamais par le nom seul), s'arrête au 1er niveau qui matche et
+  **compte** les tiers. Règles : 1 match → l'utiliser ; **>1** → plus fiable retenu + anomalie
+  `AMBIGUOUS` (badge « Tiers à vérifier », **non bloquant**) ; **0 + identifiant valide** → tiers créé
+  auto ; **nom seul / aucun identifiant** → **ni tiers ni brouillon** + anomalie `NO_IDENTIFIER`
+  (badge « À traiter »). Colonne `supplier_anomaly` sur `llx_facturex_received`.
+- **3 scénarios joués en runtime VPS le 2026-09-07** (facture Burger Queen `000000002` /
+  `F20260903_074226_072`, 1 863,79 €) : nominal (lignes API, TTC au centime, pas d'anomalie),
+  ambigu (2 tiers même SIREN), sans identifiant. Recette pilotée par SQL (ré-armer `fr:205`, seeder
+  les tiers, reset). **Le mapping des lignes via l'API, jamais validé jusqu'ici, est confirmé.**
+- **Bandeau « reconnexion SUPER PDP requise » — LIVRÉ et commité** (`02f9337`). `refreshToken()`
+  distingue l'échec **permanent** (`invalid_grant`/4xx → refresh_token mort) du **transitoire**
+  (5xx/réseau) ; seul le permanent arme la colonne `needs_reauth` sur `llx_facturex_superpdp_tokens`,
+  effacée à tout token sauvé. `printCommonFooter` affiche alors un bandeau orange (admin, sans bouton
+  fermer) ; `setup.php` expose le lien de reconnexion dès que le drapeau est armé. Migration idempotente
+  `sql/upgrade/add_tokens_needs_reauth.sql` (à jouer à la main). **Pas encore testé en runtime** (exige
+  un refresh_token réellement mort — à vérifier lors d'une vraie expiration/révocation).
+
 ## Mise à jour de session — 2026-09-03
 
 - **Chantier 3 SUPER PDP validé de bout en bout sur le VPS** (entité 7 `infansgroup`, sandbox) :
@@ -519,6 +547,15 @@ scripts SQL **idempotents** (`IF NOT EXISTS` / `IF EXISTS`).
   obligatoire. **Prise en charge `fr:204` = accusé technique posé AUTOMATIQUEMENT par le cron de
   réception** (pas de bouton) ; approbation/refus/paiement restent manuels. Auto-`fr:204` confirmée en
   runtime (le cron l'a posée seule sur 420664). Commits facturex `2a56bba`+`fa85e11`+`0def201`+`e6bc480`.
+- **2026-09-07** (VPS, entité de test, facture Burger Queen `000000002` / `F20260903_074226_072`,
+  1 863,79 €) : **piste B — génération de facture fournisseur à l'approbation** de bout en bout, les 3
+  branches de rapprochement jouées. Nominal : brouillon `(PROV)` en **source `api`** (`nb_lignes=2`,
+  `total_ht 1560.46 + total_tva 303.33 = 1863.79` = TTC reçu au centime, pas de `flagTotalMismatch`),
+  tiers rapproché sur SIREN, `fr:205` retransmis. Ambigu (2 tiers même SIREN) : brouillon + anomalie
+  `AMBIGUOUS`. Sans identifiant (identifiants de la reçue vidés) : **aucun brouillon** + anomalie
+  `NO_IDENTIFIER`. **Le mapping BG-25 des lignes via l'API est prouvé en runtime.** Prérequis
+  découverts : toggle piste B off par défaut (aucune `const`), et `fr:205` déjà « sent » masque le
+  bouton (ré-armer en supprimant l'event). Commits facturex `a74ef81`+`8c21756`+`f29e0c2`.
 - **2026-07-17** : visibilité du bandeau SUPER PDP chez les clients (profils + hooks en base).
 - **2026-08-13** (local Docker, entité 18 `afileta`) : test SUPER PDP **parties 1-2** — bandeau rouge
   visible sur `index.php` et `compta/facture/list.php`, absent sur `societe/list.php`, sur le setup et
