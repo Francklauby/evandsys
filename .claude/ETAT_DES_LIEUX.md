@@ -33,6 +33,22 @@ Les deux copies sont sur le **même commit** au moment de la rédaction (`cfdbfa
   fermer) ; `setup.php` expose le lien de reconnexion dès que le drapeau est armé. Migration idempotente
   `sql/upgrade/add_tokens_needs_reauth.sql` (à jouer à la main). **Pas encore testé en runtime** (exige
   un refresh_token réellement mort — à vérifier lors d'une vraie expiration/révocation).
+- **Audit « numérotations par entité » — FAIT (statique). Verdict : isolation par entité GARANTIE,
+  risque inter-tenant quasi nul.** Raison structurelle : le plugin **Multicompany est absent** (seul le
+  stub core `multicompany_page.php`), donc `getEntity()` (`functions.lib.php:593`, branche `$mc` null)
+  renvoie **exactement `$conf->entity`** pour tout élément de numérotation ; aucun `hookGetEntity` custom
+  ne l'élargit. Tous les modules de numérotation filtrent par entité (facture Terre/Mars/Mercure,
+  facture_fourn Cactus/Tulip, commande, propal, code tiers Elephant), et `get_next_value()`
+  (`functions2.lib.php`) borne le compteur par `entity IN (getEntity(...))`. Faux risque écarté : pas de
+  table `llx_c_auto_numbering` (compteur calculé en direct). **Point piste B levé** : le n° de facture
+  fournisseur est attribué à la validation par le module de l'entité cliente, compteur scopé entité.
+  Nuance normale (pas un bug) : masques par défaut identiques entre clients + compteurs isolés → deux
+  clients peuvent porter le même n° (ex. `FA2609-0001`), ce qui est correct en multi-tenant. **Seul
+  angle mort réel** : une requête applicative qui lirait des factures *sans* filtre `entity` mélangerait
+  ces refs — sujet de code applicatif, pas de numérotation. **Reste (runtime)** : confirmer sur la VPS
+  qu'aucun `ref` n'apparaît 2× dans une même entité
+  (`SELECT entity, ref, COUNT(*) FROM llx_facture GROUP BY entity, ref HAVING COUNT(*)>1;`, idem
+  `llx_facture_fourn`) → attendu 0 ligne.
 
 ## Mise à jour de session — 2026-09-03
 
