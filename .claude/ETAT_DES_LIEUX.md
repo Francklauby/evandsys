@@ -535,12 +535,17 @@ irait chercher dans `DOL_DATA_ROOT/<entity>/` vide). Migration d'abord, bascule 
   **alerte** sur toute catégorie non gérée. **Collision confirmée matérialisée** : `ref` `FA2606-0001`
   présente dans **2 entités** (`SELECT ref,COUNT(DISTINCT entity)…` → `FA2606-0001,2`) — un PDF a déjà
   écrasé l'autre ; la bascule + régénération résout.
-- ⬜ (3) Test sur entité 7 : `sudo -u www-data php scripts/migrate_entity_files.php --apply` → poser
-  `EVANDSYS_ENTITY_FILE_ISOLATION=1` (const entité 0) → vérifier logo, upload, **régénération PDF**
-  cloisonnés (rouvrir/revalider une facture de l'entité 7).
-- ⬜ (4) Rollout prod : re-jouer le script sur le VPS prod → activer le flag → rebuild PDF (reproductibles).
+- ✅ (3) **VALIDÉ EN RUNTIME (VPS sandbox, 2026-09-08).** Migration `--apply` OK
+  (`facturex/received/7/superpdp_420664.pdf` → `7/facturex/received/7/`, taille intacte) → flag
+  `EVANDSYS_ENTITY_FILE_ISOLATION=1` posé (const entité 0) → php-fpm reload → **le PDF reçu de l'entité 7
+  s'affiche toujours**. Preuve conclusive : `$rootfordata` résout bien `DOL_DATA_ROOT/7` (le fichier
+  n'existe plus dans le dossier partagé). Isolation active et correcte.
+- ⬜ (4) **Rollout prod** : re-jouer `migrate_entity_files.php --apply` sur le VPS prod → poser le flag
+  entité 0 → reload php-fpm → rebuild PDF reproductibles. Vérifier au préalable qu'aucune nouvelle
+  catégorie non gérée n'apparaît (le script alerte).
 
-**Prochaine action concrète** : étape 3, à dérouler côté VPS (le script + la bascule + la régénération).
+**Prochaine action** : étape 4 (rollout prod), même recette. Reste optionnel : script de régénération en
+masse des PDF si le volume prod le justifie.
 
 ### Chantiers et corrections
 
