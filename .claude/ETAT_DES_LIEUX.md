@@ -517,10 +517,22 @@ irait chercher dans `DOL_DATA_ROOT/<entity>/` vide). Migration d'abord, bascule 
   → `mv` vers `DOL_DATA_ROOT/<entity>/mycompany/logos/`. Entité 1 = maître, reste à la racine.
 - Livrable migration : script `dbmigrate` (`.php`) idempotent, avec `--dry-run`/log de ce qui bouge.
 
-**Étapes.** (0) trancher A/B. (1) patch core gated derrière le flag (dormant). (2) script de migration
-des non-reproductibles + inventaire. (3) sur une entité de test (7) : migrer → activer le flag →
-vérifier logo + upload + régénération PDF cloisonnés. (4) rollout prod : migrer toutes les entités →
-activer → rebuild PDF. **Rien n'est codé tant que A/B n'est pas tranché.**
+**Décision : option B retenue (2026-09-08).**
+
+**Étapes.**
+- ✅ (0) A/B tranché → **B**.
+- ✅ (1) **Patch core gated derrière le flag — LIVRÉ, DORMANT** (`conf.class.php:740`, `mod_evandsys`).
+  Condition élargie à `EVANDSYS_ENTITY_FILE_ISOLATION` (const entité 0). Flag non posé ⇒ comportement
+  strictement inchangé. **NE PAS activer avant l'étape 2.**
+- ⬜ (2) **Inventaire VPS** des fichiers non-reproductibles réellement présents (logos `mycompany`,
+  images `produit`, pièces jointes `societe`/`facture`) + script de migration `.php` idempotent avec
+  `--dry-run` (déplacement par entité via la base : logos ← `MAIN_INFO_SOCIETE_LOGO`/`_SMALL`).
+- ⬜ (3) Test sur entité 7 : migrer → poser `EVANDSYS_ENTITY_FILE_ISOLATION=1` → vérifier logo, upload,
+  **régénération PDF** cloisonnés.
+- ⬜ (4) Rollout prod : migrer toutes les entités >1 → activer le flag → rebuild PDF (reproductibles).
+
+**Prochaine action concrète** : étape 2, mais l'inventaire exige un accès au filesystem du VPS
+(impossible depuis le local). À dérouler côté VPS.
 
 ### Chantiers et corrections
 
@@ -594,7 +606,9 @@ Blocs encadrés par `/* mod_evandsys */` … `/* fin_mod_evandsys */` dans :
 `user.class.php` (`send_password`),
 `core/modules/facture/doc/pdf_sponge.modules.php` + `pdf_crabe.modules.php`
 (garde-fou logo : si `LOGO_SMALL` vide, retomber sur le logo pleine taille +
-`!is_dir($logo)` au rendu — sinon crash TCPDF sur le dossier `logos/thumbs/`, cf. `14953a132df`).
+`!is_dir($logo)` au rendu — sinon crash TCPDF sur le dossier `logos/thumbs/`, cf. `14953a132df`),
+`core/class/conf.class.php:740` (isolation stockage fichier par entité sans Multicompany,
+**dormant** derrière le flag `EVANDSYS_ENTITY_FILE_ISOLATION` — cf. chantier isolation fichiers).
 
 Règles : rester dans `htdocs/custom/` autant que possible, étendre par hooks/triggers, encadrer
 toute modification du core par ces commentaires + une ligne expliquant la raison, et garder les

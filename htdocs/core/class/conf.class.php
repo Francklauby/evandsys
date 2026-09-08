@@ -737,7 +737,16 @@ class Conf extends stdClass
 			$rootfordata = DOL_DATA_ROOT;
 			$rootforuser = DOL_DATA_ROOT;
 			// If multicompany module is enabled, we redefine the root of data
-			if (isModEnabled('multicompany') && !empty($this->entity) && $this->entity > 1) {
+			/* mod_evandsys */
+			// SaaS multi-entités SANS Multicompany : isoler le stockage fichier par entité
+			// (sinon tous les tenants partagent DOL_DATA_ROOT -> écrasement des PDF, logos,
+			// images produits). Même schéma que Multicompany (sous-dossier /<entity>), activé
+			// par le flag global EVANDSYS_ENTITY_FILE_ISOLATION (const entité 0). DORMANT tant
+			// que le flag n'est pas posé : NE L'ACTIVER QU'APRÈS avoir migré les fichiers
+			// existants, sinon le code ira chercher dans DOL_DATA_ROOT/<entity>/ (vide) et les
+			// fichiers actuels deviendront invisibles. Cf. chantier isolation fichiers.
+			if ((isModEnabled('multicompany') || !empty($this->global->EVANDSYS_ENTITY_FILE_ISOLATION)) && !empty($this->entity) && $this->entity > 1) {
+			/* fin_mod_evandsys */
 				$rootfordata .= '/'.$this->entity;
 			}
 			// Set standard temporary folder name or global override
