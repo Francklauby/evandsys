@@ -6,6 +6,35 @@ Les deux copies sont sur le **même commit** au moment de la rédaction (`cfdbfa
 
 ---
 
+## Mise à jour de session — 2026-09-08
+
+- **Clonage des dictionnaires au provisioning — LIVRÉ (entitydomain `2766083`, v1.0.1).** Sans
+  Multicompany, `getEntity('c_tva')` ne renvoie que l'entité courante : une entité neuve n'a **aucun
+  taux de TVA** → toute saisie de ligne de facture échoue avec « aucun taux tva défini pour le pays
+  'FR' » (vu sur entité 7 `infansgroup`). `EntityDomainProvisioning::cloneDictionaries()` découvre à
+  l'exécution tous les dictionnaires entity-scopés (tables `llx_c_*` avec colonne `entity`, via
+  INFORMATION_SCHEMA) et clone les lignes **actives** de l'entité-modèle 1. Générique/future-proof,
+  idempotent, détection générique de la PK auto-increment (`rowid` OU `id`), ne clone **jamais** les
+  lignes `fk_user` (personnalisations privées). Appelé dans `provision()`, non bloquant → automatique
+  et définitif pour tout nouveau client. **Backfill** des entités existantes : migration dbmigrate
+  `sql/upgrade/1.0.1_clone_dictionaries_existing_entities.php` (entités >1, répare l'entité 7).
+  **Reste** : jouer dbmigrate sur le VPS + vérifier runtime.
+- **Garde-fou logo PDF factures — LIVRÉ (core fork `14953a132df`).** Tenant avec
+  `MAIN_INFO_SOCIETE_LOGO` renseigné mais `LOGO_SMALL` vide → le chemin vignette devenait le dossier
+  `.../logos/thumbs/`, `is_readable()` renvoie vrai sur un répertoire → `TCPDF ERROR: Unable to get the
+  size of the image`, à **toute** régénération du PDF (ajout/suppression de ligne, validation).
+  Correctif `mod_evandsys` dans `pdf_sponge` + `pdf_crabe` : si `LOGO_SMALL` vide, retomber sur le logo
+  pleine taille ; `!is_dir($logo)` au rendu. **Débloquer infansgroup** : re-téléverser le logo
+  (régénère la vignette) ou `DELETE FROM llx_const WHERE name LIKE 'MAIN_INFO_SOCIETE_LOGO%' AND
+  entity=<7>`.
+- **⚑ CHANTIER OUVERT — isolation du stockage FICHIER par entité.** Découvert en creusant le crash
+  logo : `conf.class.php:737-742` ne préfixe `$rootfordata` par `/<entity>` **que si Multicompany est
+  activé**. Multicompany étant absent, **tous les tenants partagent `DOL_DATA_ROOT`** (logos, **PDF de
+  factures**, images produits, fichiers joints). Complète le point aveugle de l'audit numérotations :
+  deux tenants avec la même `ref` (ex. `FA2609-0001`, normal en base) écrivent le **même chemin PDF →
+  écrasement mutuel**. La numérotation est isolée en base, **pas les fichiers**. Voir §6 « Chantier
+  isolation fichiers » pour l'analyse et le plan. **Décision d'archi à prendre avant de coder.**
+
 ## Mise à jour de session — 2026-09-07
 
 - **Piste B (facture fournisseur) — DÉVELOPPÉE, COMMITÉE et VALIDÉE VPS de bout en bout.** À
@@ -451,6 +480,48 @@ Le code est livré mais **jamais exécuté en runtime** (aucun token valide en l
    2026-08-10). Contrôle de confort, à couvrir sur une prochaine inscription de test : rejouer une
    ligne de suivi après coup ne teste plus le même chemin, `pass_temp` étant vidé.
 
+### ⚑ Chantier : isolation du stockage FICHIER par entité (OUVERT le 2026-09-08)
+
+**Problème.** `conf.class.php:737-742` :
+```php
+$rootfordata = DOL_DATA_ROOT;
+if (isModEnabled('multicompany') && !empty($this->entity) && $this->entity > 1) {
+    $rootfordata .= '/'.$this->entity;   // jamais exécuté (Multicompany absent)
+}
+```
+Tous les répertoires de documents dérivent de `$rootfordata` (`mycompany`, `facture`, `propale`,
+`produit`, `societe`, fichiers joints…). Multicompany absent ⇒ **tous les tenants partagent
+`/var/www/dolibarr-documents/`**. La numérotation est isolée en base mais **pas les fichiers** :
+deux entités avec la même `ref` (`FA2609-0001`) → même chemin PDF → **écrasement**. Idem logos
+(`mycompany/logos/`), images produits, pièces jointes. Fuite/corruption inter-clients en prod.
+
+**Options.**
+- **A — Activer Multicompany.** Natif, gère l'isolation fichier + partages inter-entités. MAIS tout le
+  SaaS est bâti sur son absence (`getEntity()=$conf->entity`, audit numérotations, OAuth facturex,
+  entitydomain) : l'activer change la sémantique de `getEntity` **partout** → surface de régression
+  énorme. **Écarté sauf décision contraire.**
+- **B — Surcharge chirurgicale `mod_evandsys` (recommandé).** Étendre le test ligne 740 pour préfixer
+  `/<entity>` **sans** Multicompany, **derrière un flag** (`EVANDSYS_ENTITY_FILE_ISOLATION` en const
+  entité 0, lue depuis `$this->global` déjà chargée) pour pouvoir migrer AVANT d'activer. Point unique,
+  couvre tous les modules d'un coup.
+
+**Piège d'ordre : activer le flag AVANT de migrer rendrait invisibles les fichiers existants** (le code
+irait chercher dans `DOL_DATA_ROOT/<entity>/` vide). Migration d'abord, bascule ensuite.
+
+**Migration des existants (option B).**
+- **Fichiers reproductibles** (PDF factures/propals/commandes) : ne pas déplacer, **régénérer** après
+  bascule (mass-rebuild ou à la volée). Les collisions de `ref` déjà écrasées sont de toute façon
+  perdues → régénération = source de vérité (la base).
+- **Fichiers NON reproductibles** (logos `mycompany`, images produits, pièces jointes) : déplacer
+  par entité via la connaissance base. Logos : lire `MAIN_INFO_SOCIETE_LOGO`/`_SMALL` de chaque entité
+  → `mv` vers `DOL_DATA_ROOT/<entity>/mycompany/logos/`. Entité 1 = maître, reste à la racine.
+- Livrable migration : script `dbmigrate` (`.php`) idempotent, avec `--dry-run`/log de ce qui bouge.
+
+**Étapes.** (0) trancher A/B. (1) patch core gated derrière le flag (dormant). (2) script de migration
+des non-reproductibles + inventaire. (3) sur une entité de test (7) : migrer → activer le flag →
+vérifier logo + upload + régénération PDF cloisonnés. (4) rollout prod : migrer toutes les entités →
+activer → rebuild PDF. **Rien n'est codé tant que A/B n'est pas tranché.**
+
 ### Chantiers et corrections
 
 - **`FACTUREX_OD_ALERT_EMAIL`** est exposé dans l'écran OD (`926fd03`) mais **reste à renseigner** :
@@ -520,7 +591,10 @@ Le code est livré mais **jamais exécuté en runtime** (aucun token valide en l
 
 Blocs encadrés par `/* mod_evandsys */` … `/* fin_mod_evandsys */` dans :
 `master.inc.php`, `main.inc.php`, `passwordreset.tpl.php`, `passwordforgotten.php`,
-`user.class.php` (`send_password`).
+`user.class.php` (`send_password`),
+`core/modules/facture/doc/pdf_sponge.modules.php` + `pdf_crabe.modules.php`
+(garde-fou logo : si `LOGO_SMALL` vide, retomber sur le logo pleine taille +
+`!is_dir($logo)` au rendu — sinon crash TCPDF sur le dossier `logos/thumbs/`, cf. `14953a132df`).
 
 Règles : rester dans `htdocs/custom/` autant que possible, étendre par hooks/triggers, encadrer
 toute modification du core par ces commentaires + une ligne expliquant la raison, et garder les
