@@ -24,9 +24,12 @@ Les deux copies sont sur le **même commit** au moment de la rédaction (`cfdbfa
   `.../logos/thumbs/`, `is_readable()` renvoie vrai sur un répertoire → `TCPDF ERROR: Unable to get the
   size of the image`, à **toute** régénération du PDF (ajout/suppression de ligne, validation).
   Correctif `mod_evandsys` dans `pdf_sponge` + `pdf_crabe` : si `LOGO_SMALL` vide, retomber sur le logo
-  pleine taille ; `!is_dir($logo)` au rendu. **Débloquer infansgroup** : re-téléverser le logo
-  (régénère la vignette) ou `DELETE FROM llx_const WHERE name LIKE 'MAIN_INFO_SOCIETE_LOGO%' AND
-  entity=<7>`.
+  pleine taille ; `!is_dir($logo)` au rendu. **VRAIE CAUSE RACINE trouvée ensuite** : une constante
+  `MAIN_INFO_SOCIETE_LOGO=evandsys.png` posée sur l'**entité 0** (donc globale, héritée par tous les
+  tenants) **sans** `_SMALL` → chaque tenant sans logo propre hérite d'un logo mais pas de vignette →
+  crash. **Corrigé à la source (VPS)** : `DELETE FROM llx_const WHERE name='MAIN_INFO_SOCIETE_LOGO' AND
+  entity=0;` → les tenants sans logo affichent leur nom (correct SaaS ; l'entité 1 garde le sien, en
+  propre). L'entité 7 n'avait **aucune** constante logo propre.
 - **⚑ CHANTIER OUVERT — isolation du stockage FICHIER par entité.** Découvert en creusant le crash
   logo : `conf.class.php:737-742` ne préfixe `$rootfordata` par `/<entity>` **que si Multicompany est
   activé**. Multicompany étant absent, **tous les tenants partagent `DOL_DATA_ROOT`** (logos, **PDF de
@@ -524,15 +527,20 @@ irait chercher dans `DOL_DATA_ROOT/<entity>/` vide). Migration d'abord, bascule 
 - ✅ (1) **Patch core gated derrière le flag — LIVRÉ, DORMANT** (`conf.class.php:740`, `mod_evandsys`).
   Condition élargie à `EVANDSYS_ENTITY_FILE_ISOLATION` (const entité 0). Flag non posé ⇒ comportement
   strictement inchangé. **NE PAS activer avant l'étape 2.**
-- ⬜ (2) **Inventaire VPS** des fichiers non-reproductibles réellement présents (logos `mycompany`,
-  images `produit`, pièces jointes `societe`/`facture`) + script de migration `.php` idempotent avec
-  `--dry-run` (déplacement par entité via la base : logos ← `MAIN_INFO_SOCIETE_LOGO`/`_SMALL`).
-- ⬜ (3) Test sur entité 7 : migrer → poser `EVANDSYS_ENTITY_FILE_ISOLATION=1` → vérifier logo, upload,
-  **régénération PDF** cloisonnés.
-- ⬜ (4) Rollout prod : migrer toutes les entités >1 → activer le flag → rebuild PDF (reproductibles).
+- ✅ (2) **Inventaire VPS fait + script de migration LIVRÉ** (`entitydomain/scripts/migrate_entity_files.php`,
+  commit `cd15126`). Inventaire : **quasi rien à migrer** — `produit`/`societe` **vides**, `medias` = fonds
+  d'écran par défaut Dolibarr (partagés), logos = seul le maître (entité 1) en a. **Seul non-reproductible
+  réel** : `facturex/received/7/superpdp_420664.pdf`. Le script (dry-run par défaut, `--apply`, idempotent)
+  déplace `facturex/received/<N>` (N>1) → `<N>/facturex/received/<N>`, laisse les PDF reproductibles, et
+  **alerte** sur toute catégorie non gérée. **Collision confirmée matérialisée** : `ref` `FA2606-0001`
+  présente dans **2 entités** (`SELECT ref,COUNT(DISTINCT entity)…` → `FA2606-0001,2`) — un PDF a déjà
+  écrasé l'autre ; la bascule + régénération résout.
+- ⬜ (3) Test sur entité 7 : `sudo -u www-data php scripts/migrate_entity_files.php --apply` → poser
+  `EVANDSYS_ENTITY_FILE_ISOLATION=1` (const entité 0) → vérifier logo, upload, **régénération PDF**
+  cloisonnés (rouvrir/revalider une facture de l'entité 7).
+- ⬜ (4) Rollout prod : re-jouer le script sur le VPS prod → activer le flag → rebuild PDF (reproductibles).
 
-**Prochaine action concrète** : étape 2, mais l'inventaire exige un accès au filesystem du VPS
-(impossible depuis le local). À dérouler côté VPS.
+**Prochaine action concrète** : étape 3, à dérouler côté VPS (le script + la bascule + la régénération).
 
 ### Chantiers et corrections
 
