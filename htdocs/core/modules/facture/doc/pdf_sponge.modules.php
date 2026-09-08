@@ -2486,12 +2486,18 @@ class pdf_sponge extends ModelePDFFactures
 				if (!empty($conf->mycompany->multidir_output[$object->entity ?? $conf->entity])) {
 					$logodir = $conf->mycompany->multidir_output[$object->entity ?? $conf->entity];
 				}
-				if (!getDolGlobalInt('MAIN_PDF_USE_LARGE_LOGO')) {
+				/* mod_evandsys */
+				// Tenant SaaS ayant un logo mais pas de vignette (LOGO_SMALL vide) : le
+				// chemin deviendrait le dossier .../logos/thumbs/ et is_readable() renvoie
+				// vrai sur un répertoire -> plantage TCPDF. On retombe sur le logo pleine
+				// taille (qui existe puisque ->logo est renseigné).
+				if (!getDolGlobalInt('MAIN_PDF_USE_LARGE_LOGO') && !empty($this->emetteur->logo_small)) {
+				/* fin_mod_evandsys */
 					$logo = $logodir.'/logos/thumbs/'.$this->emetteur->logo_small;
 				} else {
 					$logo = $logodir.'/logos/'.$this->emetteur->logo;
 				}
-				if (is_readable($logo)) {
+				if (is_readable($logo) && !is_dir($logo)) { // mod_evandsys : jamais un répertoire (garde-fou TCPDF)
 					$height = pdf_getHeightForLogo($logo);
 					$pdf->Image($logo, $this->marge_gauche, $posy, 0, $height); // width=0 (auto)
 				} else {
