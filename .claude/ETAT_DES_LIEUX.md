@@ -551,8 +551,9 @@ entité 0 → reload php-fpm → rebuild PDF ; ⚠ jamais le flag avant la migra
 
 ### Chantiers et corrections
 
-- **`FACTUREX_OD_ALERT_EMAIL`** est exposé dans l'écran OD (`926fd03`) mais **reste à renseigner** :
-  vide, l'alerte part sur `MAIN_MAIL_EMAIL_FROM`.
+- **`FACTUREX_OD_ALERT_EMAIL` — ✅ CLOS sans objet (2026-09-11).** `MAIN_MAIL_EMAIL_FROM` est posé en
+  prod : le repli fonctionne, les alertes OD arrivent. Une adresse dédiée reste un point de surcharge
+  possible, non requis.
 - **Branche `!$changelater` de `send_password()`** : envoie toujours un mot de passe en clair.
   C'est l'action volontaire « envoyer un nouveau mot de passe » de la fiche utilisateur, qui
   n'offre aucun lien de choix. Priorité basse : ce n'est pas un parcours client.
@@ -560,16 +561,14 @@ entité 0 → reload php-fpm → rebuild PDF ; ⚠ jamais le flag avant la migra
   « lecture base = prise de contrôle d'un locataire ». Aujourd'hui le secret est en base et son
   dérivé dans l'URL, l'inverse du bon sens. Jugé mauvais rapport travail/gain maintenant que
   `pass_temp` ne porte plus de mot de passe : résidu = quelques comptes en attente sur 48 h.
-- **Réparer les tiers 11, 12, 13** : SIREN/SIRET/fk_pays vides, créés avant le correctif
-  `idprof1`/`idprof2`/`country_id`. Reprise possible depuis les constantes `MAIN_INFO_*` de
-  chaque entité.
-- **Entités antérieures au 2026-08-10 : entités HTML en base.** `vitrine/siren.php` échappait les
-  champs à la saisie, si bien que `&` et les apostrophes sont stockés `&amp;` / `&#039;` dans
-  `llx_societe.nom`, `llx_entitydomain.label`, les `MAIN_INFO_*`, `llx_socpeople`, `llx_user` et
-  les `payload` des demandes. **Corrigé à la source, existant non réparé** — et les sous-domaines
-  déjà dérivés d'une valeur échappée non plus (entité 17 = `aampcevents` au lieu de `acevents`),
-  ce qui ne se rattrape pas sans changer l'URL du client. Script `html_entity_decode` avec
-  `--dry-run` à écrire **si un vrai client est concerné** ; sur les entités de test, sans objet.
+- **Réparer les tiers 11, 12, 13 — ✅ CLOS sans objet (2026-09-11).** Ce sont des données de test ;
+  aucun vrai tiers en prod (hors données de test). Rien à réparer. (Le correctif
+  `idprof1`/`idprof2`/`country_id` reste en place pour les futurs vrais tiers.)
+- **Entités HTML antérieures au 2026-08-10 — ✅ CLOS sans objet (2026-09-11).** Le correctif est à la
+  source ; la réparation de l'existant n'était à écrire que « si un vrai client est concerné ». Aucun
+  vrai client en prod → sans objet. (Bug d'échappement `vitrine/siren.php` : `&amp;`/`&#039;` stockés
+  dans `llx_societe.nom`, `MAIN_INFO_*`, etc. ; les sous-domaines déjà dérivés ne se rattraperaient
+  pas sans changer l'URL — mémo conservé au cas où un vrai client hériterait du bug.)
 - **Ménage cron — ✅ CORRIGÉ (2026-09-11, entitydomain `f95abcb`, v1.0.2).** Les entités clientes
   héritaient de cronjobs `ALWAYS_ON` des descripteurs core (`RecurringInvoicesJob`,
   `RecurringSupplierInvoicesJob`, `SendSmsReminders`…) insérés par `activateModule()`, qui tournaient
@@ -581,8 +580,7 @@ entité 0 → reload php-fpm → rebuild PDF ; ⚠ jamais le flag avant la migra
   chaque activation de modules (`applyToEntity` + `enforceAlwaysOnForEntity`), garde `entity<=1` ;
   (B) migration dbmigrate `1.0.2_purge_client_entity_cronjobs.php` (backfill 7-15, relève auditable,
   idempotente). Option C (patch du garde runner cœur) écartée (règle « éviter le core »).
-  **Reste** : jouer dbmigrate sur le VPS puis vérifier
-  `SELECT entity, COUNT(*) FROM llx_cronjob WHERE entity>1 GROUP BY entity;` → attendu 0.
+  **✅ dbmigrate 1.0.2 joué sur le VPS (2026-09-11) : cronjobs parasites purgés. Clôturé.**
 
 ### Décisions déjà prises (ne pas rouvrir)
 
