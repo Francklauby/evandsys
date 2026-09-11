@@ -568,14 +568,19 @@ masse des PDF si le volume prod le justifie.
   déjà dérivés d'une valeur échappée non plus (entité 17 = `aampcevents` au lieu de `acevents`),
   ce qui ne se rattrape pas sans changer l'URL du client. Script `html_entity_decode` avec
   `--dry-run` à écrire **si un vrai client est concerné** ; sur les entités de test, sans objet.
-- **Ménage cron** (sans urgence) : les entités clientes 7 à 15 portent des travaux planifiés créés
-  par les descripteurs de `modFacture` / `modFournisseur` (`RecurringInvoicesJob`,
-  `RecurringSupplierInvoicesJob`, `SendSmsReminders`…), tous en `ALWAYS_ON`, parcourus à chaque
-  cycle, deux de plus par client créé. Le contrôle « module cron non activé dans l'entité » ne joue
-  qu'au changement d'entité : le premier job d'une entité est annulé, les suivants s'exécutent.
-  `MAIN_MODULE_CRON` est désormais en liste noire, mais cela filtre l'offre sans désactiver
-  l'existant :
-  `SELECT entity, value FROM llx_const WHERE name = 'MAIN_MODULE_CRON' ORDER BY entity;`
+- **Ménage cron — ✅ CORRIGÉ (2026-09-11, entitydomain `f95abcb`, v1.0.2).** Les entités clientes
+  héritaient de cronjobs `ALWAYS_ON` des descripteurs core (`RecurringInvoicesJob`,
+  `RecurringSupplierInvoicesJob`, `SendSmsReminders`…) insérés par `activateModule()`, qui tournaient
+  malgré le module Cron absent : le garde `isModEnabled('cron')` du runner cœur
+  (`scripts/cron/cron_run_jobs.php`) n'est réévalué **qu'au changement d'entité** → seul le 1er job
+  d'une entité est annulé, les suivants s'exécutent. `MAIN_MODULE_CRON` en liste noire ne filtre que
+  l'offre, sans désactiver l'existant. **Fix A+B** (aucune entité cliente ne fait tourner de cron —
+  tout est sur l'entité 1) : (A) helper `EntityDomainProfile::purgeCronjobsForEntity()` appelé après
+  chaque activation de modules (`applyToEntity` + `enforceAlwaysOnForEntity`), garde `entity<=1` ;
+  (B) migration dbmigrate `1.0.2_purge_client_entity_cronjobs.php` (backfill 7-15, relève auditable,
+  idempotente). Option C (patch du garde runner cœur) écartée (règle « éviter le core »).
+  **Reste** : jouer dbmigrate sur le VPS puis vérifier
+  `SELECT entity, COUNT(*) FROM llx_cronjob WHERE entity>1 GROUP BY entity;` → attendu 0.
 
 ### Décisions déjà prises (ne pas rouvrir)
 
