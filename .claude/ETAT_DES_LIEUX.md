@@ -540,12 +540,14 @@ irait chercher dans `DOL_DATA_ROOT/<entity>/` vide). Migration d'abord, bascule 
   `EVANDSYS_ENTITY_FILE_ISOLATION=1` posé (const entité 0) → php-fpm reload → **le PDF reçu de l'entité 7
   s'affiche toujours**. Preuve conclusive : `$rootfordata` résout bien `DOL_DATA_ROOT/7` (le fichier
   n'existe plus dans le dossier partagé). Isolation active et correcte.
-- ⬜ (4) **Rollout prod** : re-jouer `migrate_entity_files.php --apply` sur le VPS prod → poser le flag
-  entité 0 → reload php-fpm → rebuild PDF reproductibles. Vérifier au préalable qu'aucune nouvelle
-  catégorie non gérée n'apparaît (le script alerte).
+- ✅ (4) **Rollout prod FAIT (2026-09-08).** `migrate_entity_files.php --apply` + flag
+  `EVANDSYS_ENTITY_FILE_ISOLATION=1` posé (const entité 0) + reload php-fpm + rebuild PDF, sur le VPS
+  prod. Aucune nouvelle catégorie non gérée. Isolation fichiers par entité **active en production**.
 
-**Prochaine action** : étape 4 (rollout prod), même recette. Reste optionnel : script de régénération en
-masse des PDF si le volume prod le justifie.
+**CHANTIER CLÔTURÉ** : les 4 étapes sont livrées et en prod. Reste optionnel : script de régénération
+en masse des PDF si le volume prod le justifie. Rappel rollout d'une future entité / re-migration :
+`migrate_entity_files.php --apply` (sudo -u www-data) → vérifier aucune catégorie non gérée → flag
+entité 0 → reload php-fpm → rebuild PDF ; ⚠ jamais le flag avant la migration.
 
 ### Chantiers et corrections
 
